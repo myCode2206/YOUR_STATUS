@@ -84,8 +84,11 @@ const useAuthStore = create(
           set({ user: data.user });
           return data.user;
         } catch (err) {
-          // Token expired
-          get().logout();
+          // ONLY logout if backend confirms token is invalid (401).
+          // Otherwise, it was just a timeout/network error, so keep the session!
+          if (err.response?.status === 401) {
+            get().logout();
+          }
         }
       },
 

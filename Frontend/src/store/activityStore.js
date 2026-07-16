@@ -1,39 +1,41 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { activitiesAPI } from '../api';
 
-const useActivityStore = create((set, get) => ({
-  currentActivity: null,
-  elapsedSeconds: 0,
-  serverTime: null,
-  isLoading: false,
-  timerInterval: null,
+const useActivityStore = create(
+  persist(
+    (set, get) => ({
+      currentActivity: null,
+      elapsedSeconds: 0,
+      serverTime: null,
+      isLoading: false,
+      timerInterval: null,
 
-  // Fetch current activity from server (source of truth)
-  fetchCurrent: async () => {
-    try {
-      const { data } = await activitiesAPI.current();
-      const now = Date.now();
+      // Fetch current activity from server (source of truth)
+      fetchCurrent: async () => {
+        try {
+          const { data } = await activitiesAPI.current();
+          
+          set({
+            currentActivity: data.activity,
+            serverTime: data.serverTime,
+          });
 
-      set({
-        currentActivity: data.activity,
-        serverTime: data.serverTime,
-      });
+          // Start display timer (for UI only — truth is always server startTime)
+          if (data.activity) {
+            const startMs = new Date(data.activity.startTime).getTime();
+            get()._startDisplayTimer(startMs);
+            set({ elapsedSeconds: data.elapsed || 0 });
+          } else {
+            get()._stopDisplayTimer();
+            set({ elapsedSeconds: 0 });
+          }
 
-      // Start display timer (for UI only — truth is always server startTime)
-      if (data.activity) {
-        const startMs = new Date(data.activity.startTime).getTime();
-        get()._startDisplayTimer(startMs);
-        set({ elapsedSeconds: data.elapsed || 0 });
-      } else {
-        get()._stopDisplayTimer();
-        set({ elapsedSeconds: 0 });
-      }
-
-      return data.activity;
-    } catch (err) {
-      console.error('fetchCurrent error:', err);
-    }
-  },
+          return data.activity;
+        } catch (err) {
+          console.error('fetchCurrent error:', err);
+        }
+      },
 
   // Start a new activity
   startActivity: async (activityData) => {
@@ -110,9 +112,25 @@ const useActivityStore = create((set, get) => ({
     }
   },
 
-  cleanup: () => {
-    get()._stopDisplayTimer();
-  },
-}));
+      cleanup: () => {
+        get()._stopDisplayTimer();
+      },
+    }),
+    {
+      name: 'ys_activity',
+      partialize: (state) => ({
+        currentActivity: state.currentActivity,
+        elapsedSeconds: state.elapsedSeconds,
+      }),
+      // Re-start display timer when store is hydrated from localStorage
+      onRehydrateStorage: () => (state) => {
+        if (state && state.currentActivity) {
+          const startMs = new Date(state.currentActivity.startTime).getTime();
+          state._startDisplayTimer(startMs);
+        }
+      }
+    }
+  )
+);
 
 export default useActivityStore;
