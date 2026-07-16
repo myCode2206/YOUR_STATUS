@@ -67,14 +67,32 @@ app.use('/api/feed', require('./src/routes/feed'));
 app.use('/api/leaderboard', require('./src/routes/leaderboard'));
 app.use('/api/users', require('./src/routes/users'));
 
-// Health check
-app.get('/api/health', (req, res) => {
-    res.json({
-        success: true,
-        message: 'Your Status API is running 🚀',
-        timestamp: new Date().toISOString(),
-        serverTime: new Date().toISOString(),
-    });
+// Health check + DB debug
+app.get('/api/health', async (req, res) => {
+    const mongoose = require('mongoose');
+    const Activity = require('./src/models/Activity');
+    const User = require('./src/models/User');
+    
+    try {
+        const dbState = mongoose.connection.readyState;
+        const dbStateStr = ['disconnected','connected','connecting','disconnecting'][dbState] || 'unknown';
+        const userCount = await User.countDocuments();
+        const activityCount = await Activity.countDocuments();
+        const recentActivities = await Activity.find({ endTime: { $ne: null } })
+            .sort({ startTime: -1 })
+            .limit(5)
+            .select('name category duration startTime endTime user');
+
+        res.json({
+            success: true,
+            message: 'Your Status API is running 🚀',
+            timestamp: new Date().toISOString(),
+            db: { state: dbStateStr, users: userCount, activities: activityCount },
+            recentActivities,
+        });
+    } catch (e) {
+        res.json({ success: true, message: 'API running but DB query failed', error: e.message });
+    }
 });
 
 // 404 handler

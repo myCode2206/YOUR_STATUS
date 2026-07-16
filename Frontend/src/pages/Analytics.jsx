@@ -17,8 +17,11 @@ export default function Analytics() {
     fetchData();
   }, [timelineDate]);
 
+  const [error, setError] = useState(null);
+
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [statsRes, timelineRes, heatmapRes] = await Promise.all([
         usersAPI.myStats(),
@@ -30,6 +33,7 @@ export default function Analytics() {
       setHeatmap(heatmapRes.data.data);
     } catch (e) {
       console.error('Analytics error:', e);
+      setError(e?.response?.data?.message || e.message || 'Failed to load analytics. Is the backend running?');
     } finally {
       setLoading(false);
     }
@@ -46,6 +50,17 @@ export default function Analytics() {
   };
 
   if (loading && !stats) return <div className="page-container"><Loader text="Crunching your stats..." /></div>;
+
+  if (error) return (
+    <div className="page-container">
+      <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+        <div style={{ fontSize: '3rem', marginBottom: 16 }}>⚠️</div>
+        <h3 style={{ color: 'var(--color-danger)', marginBottom: 8 }}>Analytics failed to load</h3>
+        <p style={{ color: 'var(--color-text-secondary)', marginBottom: 24 }}>{error}</p>
+        <button className="btn btn-primary" onClick={fetchData}>Retry</button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="page-container">
