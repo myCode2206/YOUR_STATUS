@@ -108,7 +108,7 @@ export default function GroupPage() {
   return (
     <div className="page-container">
       {/* Group Header */}
-      <div className="glass-card mb-6" style={{ padding: 'var(--space-6)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '4px solid var(--color-primary)' }}>
+      <div className="glass-card mb-6" style={{ padding: 'var(--space-6)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, borderTop: '4px solid var(--color-primary)' }}>
         <div>
           <h1 style={{ marginBottom: 4 }}>{currentGroup.name}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>{currentGroup.description}</p>

@@ -44,7 +44,10 @@ export default function Dashboard() {
     if (!secs) return '0h 0m';
     const h = Math.floor(secs / 3600);
     const m = Math.floor((secs % 3600) / 60);
-    return `${h}h ${m}m`;
+    const s = secs % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m`;
+    return `${s}s`;
   };
 
   const handleToggle = async () => {

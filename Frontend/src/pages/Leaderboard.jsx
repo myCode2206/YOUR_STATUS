@@ -34,10 +34,13 @@ export default function Leaderboard() {
   };
 
   const formatHours = (secs) => {
-    if (!secs) return '0h 0m';
+    if (!secs) return '0m 0s';
     const h = Math.floor(secs / 3600);
     const m = Math.floor((secs % 3600) / 60);
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    const s = secs % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m`;
+    return `${s}s`;
   };
 
   if (!currentGroup) {

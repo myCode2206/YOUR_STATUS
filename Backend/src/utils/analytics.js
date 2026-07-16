@@ -176,7 +176,7 @@ async function computeStreak(userId) {
 
     const totalStudy = activities.reduce((sum, a) => sum + (a.duration || 0), 0);
 
-    if (totalStudy >= 300) { // At least 5 minutes of study
+    if (totalStudy >= 60) { // At least 1 minute of study to count for a streak day
       tempStreak++;
       if (i === 0 || streak > 0) streak = tempStreak; // Only count current streak
       if (tempStreak > longestStreak) longestStreak = tempStreak;
