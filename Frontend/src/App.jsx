@@ -8,7 +8,6 @@ import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import GroupPage from './pages/Group';
 import Feed from './pages/Feed';
-import Leaderboard from './pages/Leaderboard';
 import Analytics from './pages/Analytics';
 import Profile from './pages/Profile';
 
@@ -37,7 +36,6 @@ export default function App() {
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/group" element={<ProtectedRoute><GroupPage /></ProtectedRoute>} />
       <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
-      <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="/profile/:userId" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

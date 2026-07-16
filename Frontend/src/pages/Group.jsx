@@ -6,7 +6,9 @@ import { groupsAPI } from '../api';
 import Avatar from '../components/ui/Avatar';
 import Modal from '../components/ui/Modal';
 import toast from 'react-hot-toast';
-import { RiAddLine, RiFileCopyLine, RiUserAddLine } from 'react-icons/ri';
+import { RiAddLine, RiFileCopyLine, RiUserAddLine, RiTrophyLine, RiGroupLine, RiFireFill } from 'react-icons/ri';
+import { leaderboardAPI } from '../api';
+import Loader from '../components/ui/Loader';
 
 export default function GroupPage() {
   const { user } = useAuthStore();
@@ -15,6 +17,11 @@ export default function GroupPage() {
   const [showJoin, setShowJoin] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '', inviteCode: '' });
+  const [activeTab, setActiveTab] = useState('members'); // 'members' or 'leaderboard'
+  const [period, setPeriod] = useState('daily');
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderboardMeta, setLeaderboardMeta] = useState(null);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,6 +29,25 @@ export default function GroupPage() {
       loadGroup(user.groups[0]._id || user.groups[0]);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (currentGroup?._id && activeTab === 'leaderboard') {
+      fetchLeaderboard();
+    }
+  }, [currentGroup?._id, activeTab, period]);
+
+  const fetchLeaderboard = async () => {
+    setLeaderboardLoading(true);
+    try {
+      const { data } = await leaderboardAPI.get(currentGroup._id, period);
+      setLeaderboard(data.leaderboard);
+      setLeaderboardMeta(data.meta);
+    } catch (e) {
+      toast.error('Failed to load leaderboard');
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  };
 
   const loadGroup = async (id) => {
     await fetchGroup(id);
@@ -57,6 +83,16 @@ export default function GroupPage() {
     const h = Math.floor(secs / 3600);
     const m = Math.floor((secs % 3600) / 60);
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+
+  const formatHours = (secs) => {
+    if (!secs) return '0m 0s';
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m`;
+    return `${s}s`;
   };
 
   if (!currentGroup && !user?.groups?.length) {
@@ -129,68 +165,212 @@ export default function GroupPage() {
         </div>
       </div>
 
-      {/* Members Grid */}
-      <h3 style={{ marginBottom: 20 }}>Group Members ({members.length})</h3>
-      <div className="grid-3">
-        {members.map(member => (
-          <div 
-            key={member._id} 
-            className="card" 
-            style={{ position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
-            onClick={() => navigate(`/profile/${member._id}`)}
-          >
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
-              <Avatar user={member} size="lg" />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '1.1rem' }} className="truncate">{member.displayName}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>@{member.username}</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-warning)' }}>Lvl {member.level}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  🔥 {member.streak}
-                </div>
-              </div>
-            </div>
+      {/* Tabs Switcher */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: 24, gap: 24 }}>
+        <button 
+          onClick={() => setActiveTab('members')}
+          style={{
+            padding: '12px 4px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'members' ? '2px solid var(--color-primary)' : '2px solid transparent',
+            color: activeTab === 'members' ? 'var(--color-primary-light)' : 'var(--color-text-secondary)',
+            fontWeight: activeTab === 'members' ? 700 : 500,
+            cursor: 'pointer',
+            fontSize: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <RiGroupLine /> Members ({members.length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('leaderboard')}
+          style={{
+            padding: '12px 4px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'leaderboard' ? '2px solid var(--color-primary)' : '2px solid transparent',
+            color: activeTab === 'leaderboard' ? 'var(--color-primary-light)' : 'var(--color-text-secondary)',
+            fontWeight: activeTab === 'leaderboard' ? 700 : 500,
+            cursor: 'pointer',
+            fontSize: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <RiTrophyLine /> Leaderboard
+        </button>
+      </div>
 
-            {/* Current Activity Display */}
-            {member.currentActivity ? (
-              <div style={{ 
-                background: 'rgba(255,107,0,0.1)', 
-                border: '1px solid rgba(255,107,0,0.2)', 
-                padding: '12px 16px', 
-                borderRadius: 'var(--radius-md)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-              }}>
-                <span style={{ fontSize: '1.5rem' }}>{member.currentActivity.emoji}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Currently</div>
-                  <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{member.currentActivity.name}</div>
+      {activeTab === 'members' ? (
+        <>
+          <h3 style={{ marginBottom: 20 }}>Group Members</h3>
+          <div className="grid-3">
+            {members.map(member => (
+              <div 
+                key={member._id} 
+                className="card" 
+                style={{ position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
+                onClick={() => navigate(`/profile/${member._id}`)}
+              >
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
+                  <Avatar user={member} size="lg" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '1.1rem' }} className="truncate">{member.displayName}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>@{member.username}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-warning)' }}>Lvl {member.level}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      🔥 {member.streak}
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontFamily: 'JetBrains Mono', color: 'var(--color-primary-light)', fontWeight: 700 }}>
-                  {formatDuration(member.currentActivity.elapsed)}
-                </div>
+
+                {/* Current Activity Display */}
+                {member.currentActivity ? (
+                  <div style={{ 
+                    background: 'rgba(255,107,0,0.1)', 
+                    border: '1px solid rgba(255,107,0,0.2)', 
+                    padding: '12px 16px', 
+                    borderRadius: 'var(--radius-md)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}>
+                    <span style={{ fontSize: '1.5rem' }}>{member.currentActivity.emoji}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Currently</div>
+                      <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{member.currentActivity.name}</div>
+                    </div>
+                    <div style={{ fontFamily: 'JetBrains Mono', color: 'var(--color-primary-light)', fontWeight: 700 }}>
+                      {formatDuration(member.currentActivity.elapsed)}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ 
+                    background: 'var(--color-bg-elevated)', 
+                    border: '1px solid var(--color-border)', 
+                    padding: '12px 16px', 
+                    borderRadius: 'var(--radius-md)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--color-text-muted)',
+                    fontSize: '0.9rem'
+                  }}>
+                    Idle
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div>
+          {/* Leaderboard controls */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>
+                Total study time: <strong style={{ color: 'var(--color-primary-light)' }}>{formatHours(leaderboardMeta?.totalGroupStudySeconds)}</strong>
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-lg)', padding: 4, border: '1px solid var(--color-border)' }}>
+              {['daily', 'weekly', 'allTime'].map(p => (
+                <button
+                  key={p}
+                  className={`btn btn-sm ${period === p ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ borderRadius: 'var(--radius-md)', padding: '6px 16px', border: 'none' }}
+                  onClick={() => setPeriod(p)}
+                >
+                  {p.charAt(0).toUpperCase() + p.slice(1).replace('Time', ' Time')}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Leaderboard list */}
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            {leaderboardLoading ? (
+              <Loader text="Fetching leaderboard..." />
+            ) : leaderboard.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                No activity found for this period.
               </div>
             ) : (
-              <div style={{ 
-                background: 'var(--color-bg-elevated)', 
-                border: '1px solid var(--color-border)', 
-                padding: '12px 16px', 
-                borderRadius: 'var(--radius-md)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--color-text-muted)',
-                fontSize: '0.9rem'
-              }}>
-                Idle
-              </div>
+              leaderboard.map((member, index) => {
+                const isMe = member._id === user._id;
+                return (
+                  <div 
+                    key={member._id} 
+                    className={`leaderboard-item ${index < 3 ? `rank-${index + 1}` : ''}`}
+                    style={{ 
+                      borderRadius: 0, 
+                      borderBottom: index === leaderboard.length - 1 ? 'none' : '1px solid var(--color-border)',
+                      background: isMe ? 'rgba(255, 107, 0, 0.05)' : undefined,
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => navigate(`/profile/${member._id}`)}
+                  >
+                    <div className="rank-badge" style={{ 
+                      background: index === 0 ? 'var(--gradient-gold)' : index === 1 ? 'linear-gradient(135deg, #9ca3af, #6b7280)' : index === 2 ? 'linear-gradient(135deg, #d97706, #92400e)' : 'var(--color-bg-elevated)',
+                      color: index < 3 ? 'white' : 'var(--color-text-secondary)'
+                    }}>
+                      {index + 1}
+                    </div>
+                    
+                    <Avatar user={member} />
+                    
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{member.displayName}</span>
+                        {isMe && <span className="badge badge-primary" style={{ padding: '2px 6px', fontSize: '0.65rem' }}>YOU</span>}
+                      </div>
+                      
+                      {member.currentActivity ? (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                          <span className="animate-pulse">●</span> 
+                          {member.currentActivity.emoji} {member.currentActivity.name}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                          Idle
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Badges */}
+                    <div style={{ display: 'flex', gap: 6, marginRight: 16 }}>
+                      {member.badges?.map(b => (
+                        <div key={b.id} title={b.name} style={{ fontSize: '1.2rem', filter: `drop-shadow(0 0 4px ${b.color}40)` }}>
+                          {b.emoji}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Score / Stats */}
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontFamily: 'JetBrains Mono', fontSize: '1.25rem', fontWeight: 800, color: index === 0 ? 'var(--color-warning)' : 'var(--color-text-primary)' }}>
+                        {formatHours(member.score)}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                        <RiFireFill style={{ color: 'var(--color-primary)' }} />
+                        {member.streak} streak
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
       <Modal isOpen={showInvite} onClose={() => setShowInvite(false)} title="Invite to Group">
         <div style={{ textAlign: 'center', padding: '20px 0' }}>

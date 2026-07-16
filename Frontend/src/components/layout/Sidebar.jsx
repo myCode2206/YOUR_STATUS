@@ -15,7 +15,6 @@ import StatusPicker from '../activity/StatusPicker';
 const navItems = [
   { to: '/dashboard', icon: RiDashboardFill, label: 'Dashboard' },
   { to: '/group', icon: RiGroupFill, label: 'My Group' },
-  { to: '/leaderboard', icon: RiTrophyFill, label: 'Leaderboard' },
   { to: '/feed', icon: RiNewspaperFill, label: 'Feed' },
   { to: '/analytics', icon: RiBarChart2Fill, label: 'Analytics' },
   { to: '/profile', icon: RiUserFill, label: 'Profile' },
