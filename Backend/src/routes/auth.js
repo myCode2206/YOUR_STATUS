@@ -133,8 +133,8 @@ router.post('/google', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Google idToken required' });
     }
 
-    const admin = require('firebase-admin');
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const { getAuth } = require('firebase-admin/auth');
+    const decodedToken = await getAuth().verifyIdToken(idToken);
     const { email, name, picture } = decodedToken;
 
     if (!email) {

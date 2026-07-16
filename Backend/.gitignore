@@ -8,6 +8,12 @@ node_modules/
 .env.development
 .env.test
 
+# Firebase Service Account — contains private key, NEVER commit
+firebase-service-account.json
+.env.production
+.env.development
+.env.test
+
 # Logs
 logs/
 *.log

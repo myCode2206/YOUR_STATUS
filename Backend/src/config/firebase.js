@@ -1,32 +1,58 @@
-const admin = require('firebase-admin');
-
-const projectId = process.env.FIREBASE_PROJECT_ID;
-const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-// Handle newlines in private key
-const privateKey = process.env.FIREBASE_PRIVATE_KEY 
-  ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') 
-  : undefined;
-const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
+const path = require('path');
+const fs = require('fs');
 
 let bucket = null;
 
-if (projectId && clientEmail && privateKey && storageBucket) {
+// ── Method 1: Local JSON file (best for local dev) ──────────────────────────
+const serviceAccountPath = path.join(__dirname, '../../firebase-service-account.json');
+const hasJsonFile = fs.existsSync(serviceAccountPath);
+
+// ── Method 2: Base64-encoded JSON (best for Vercel / CI) ─────────────────────
+// Set FIREBASE_SERVICE_ACCOUNT_BASE64 in Vercel env vars.
+// Generate with: node -e "console.log(Buffer.from(fs.readFileSync('firebase-service-account.json')).toString('base64'))"
+const hasBase64 = !!process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+
+// ── Method 3: Individual env vars (legacy fallback) ──────────────────────────
+const projectId = process.env.FIREBASE_PROJECT_ID;
+const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
+const rawKey = process.env.FIREBASE_PRIVATE_KEY;
+const privateKey = rawKey
+  ? rawKey.includes('\\n')
+    ? rawKey.replace(/\\n/g, '\n')
+    : rawKey
+  : undefined;
+const hasEnvCreds = !!(projectId && clientEmail && privateKey && storageBucket);
+
+if (hasJsonFile || hasBase64 || hasEnvCreds) {
   try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId,
-        clientEmail,
-        privateKey,
-      }),
-      storageBucket,
-    });
-    bucket = admin.storage().bucket();
+    const { cert, initializeApp } = require('firebase-admin/app');
+    const { getStorage } = require('firebase-admin/storage');
+
+    let serviceAccount, bucketName;
+
+    if (hasBase64) {
+      // Vercel: decode from base64 env var
+      serviceAccount = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8'));
+      bucketName = storageBucket || `${serviceAccount.project_id}.firebasestorage.app`;
+    } else if (hasJsonFile) {
+      // Local: load from JSON file
+      serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+      bucketName = storageBucket || `${serviceAccount.project_id}.firebasestorage.app`;
+    } else {
+      // Legacy: build from individual env vars
+      serviceAccount = { projectId, clientEmail, privateKey };
+      bucketName = storageBucket;
+    }
+
+    const app = initializeApp({ credential: cert(serviceAccount), storageBucket: bucketName });
+    bucket = getStorage(app).bucket();
     console.log('✅ Firebase Admin initialized successfully');
   } catch (error) {
-    console.error('❌ Error initializing Firebase Admin:', error);
+    console.error('❌ Error initializing Firebase Admin:', error.message);
   }
 } else {
-  console.warn('⚠️ Firebase configuration environment variables are missing. File uploads will fail in production.');
+  console.warn('⚠️ Firebase not configured. File uploads will use local storage fallback.');
 }
 
 /**
