@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
+import { BACKEND_URL } from '../api';
 import useAuthStore from '../store/authStore';
 import useActivityStore from '../store/activityStore';
 import useGroupStore from '../store/groupStore';
@@ -18,7 +19,7 @@ export const useSocket = () => {
     if (!isAuthenticated || !user || initialized.current) return;
     initialized.current = true;
 
-    socket = io('http://localhost:8900', {
+    socket = io(BACKEND_URL, {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: Infinity,

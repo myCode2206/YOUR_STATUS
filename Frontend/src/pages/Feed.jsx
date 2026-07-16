@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import useGroupStore from '../store/groupStore';
-import { feedAPI } from '../api';
+import { feedAPI, BACKEND_URL } from '../api';
 import Avatar from '../components/ui/Avatar';
 import Loader from '../components/ui/Loader';
 import toast from 'react-hot-toast';
@@ -224,7 +224,7 @@ export default function Feed() {
                   )}
 
                   {post.mediaUrl && post.type === 'image' && (
-                    <img src={`http://localhost:8900${post.mediaUrl}`} className="post-media" alt="Post attachment" />
+                    <img src={`${BACKEND_URL}${post.mediaUrl}`} className="post-media" alt="Post attachment" />
                   )}
 
                   <div className="post-actions">

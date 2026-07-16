@@ -1,3 +1,5 @@
+import { BACKEND_URL } from '../../api';
+
 export default function Avatar({ user, size = 'md', className = '' }) {
   const sizeClass = `avatar-${size}`;
   const initials = user?.displayName
@@ -20,7 +22,7 @@ export default function Avatar({ user, size = 'md', className = '' }) {
     <div className="avatar-wrapper">
       {user?.avatar ? (
         <img
-          src={user.avatar.startsWith('/') ? `http://localhost:8900${user.avatar}` : user.avatar}
+          src={user.avatar.startsWith('/') ? `${BACKEND_URL}${user.avatar}` : user.avatar}
           alt={user.displayName}
           className={`avatar ${sizeClass} ${className}`}
           onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
