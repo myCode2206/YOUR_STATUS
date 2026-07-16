@@ -124,4 +124,64 @@ router.post('/logout', protect, async (req, res) => {
   }
 });
 
+// @route   POST /api/auth/google
+// @desc    Google Sign-in / Sign-up via Firebase ID Token
+router.post('/google', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ success: false, message: 'Google idToken required' });
+    }
+
+    const admin = require('firebase-admin');
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const { email, name, picture } = decodedToken;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email not provided by Google' });
+    }
+
+    let user = await User.findOne({ email: email.toLowerCase() })
+      .populate('currentActivity')
+      .populate('groups', 'name avatar inviteCode description');
+
+    if (!user) {
+      // Generate a unique username from email prefix
+      const baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
+      let username = baseUsername;
+      let usernameExists = await User.findOne({ username });
+      let count = 1;
+      while (usernameExists) {
+        username = `${baseUsername}${count}`;
+        usernameExists = await User.findOne({ username });
+        count++;
+      }
+
+      user = await User.create({
+        username,
+        displayName: name || email.split('@')[0],
+        email: email.toLowerCase(),
+        avatar: picture || '',
+        password: Math.random().toString(36).slice(-10), // secure dummy password
+      });
+    }
+
+    // Update online status
+    user.isOnline = true;
+    user.lastSeen = new Date();
+    await user.save();
+
+    const token = generateToken(user._id);
+
+    res.json({
+      success: true,
+      token,
+      user: user.toJSON(),
+    });
+  } catch (error) {
+    console.error('Google Auth error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

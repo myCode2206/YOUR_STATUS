@@ -5,6 +5,7 @@ const Group = require('../models/Group');
 const Notification = require('../models/Notification');
 const { protect } = require('../middleware/auth');
 const { upload } = require('../middleware/upload');
+const { saveUploadedFile } = require('../utils/fileSaver');
 const path = require('path');
 
 // Helper to check group membership
@@ -37,7 +38,8 @@ router.post('/:groupId', protect, upload.single('media'), async (req, res) => {
     };
 
     if (req.file) {
-      postData.mediaUrl = `/uploads/${req.file.filename}`;
+      const mediaUrl = await saveUploadedFile(req.file, 'posts');
+      postData.mediaUrl = mediaUrl;
       postData.mediaFilename = req.file.originalname;
       postData.mediaMimetype = req.file.mimetype;
       postData.mediaSize = req.file.size;

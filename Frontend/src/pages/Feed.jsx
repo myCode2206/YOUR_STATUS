@@ -224,7 +224,11 @@ export default function Feed() {
                   )}
 
                   {post.mediaUrl && post.type === 'image' && (
-                    <img src={`${BACKEND_URL}${post.mediaUrl}`} className="post-media" alt="Post attachment" />
+                    <img 
+                      src={post.mediaUrl.startsWith('http') ? post.mediaUrl : `${BACKEND_URL}${post.mediaUrl}`} 
+                      className="post-media" 
+                      alt="Post attachment" 
+                    />
                   )}
 
                   <div className="post-actions">

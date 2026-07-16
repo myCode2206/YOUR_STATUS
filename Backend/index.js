@@ -9,6 +9,9 @@ const connectDB = require('./src/config/db');
 // Connect to MongoDB
 connectDB();
 
+// Initialize Firebase Admin
+require('./src/config/firebase');
+
 const app = express();
 const server = http.createServer(app);
 
@@ -32,8 +35,23 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const fs = require('fs');
+
+// Serve uploaded files statically (safely resolve directory for serverless environments)
+let staticUploadsDir = path.join(__dirname, 'uploads');
+try {
+  if (!fs.existsSync(staticUploadsDir)) {
+    fs.mkdirSync(staticUploadsDir, { recursive: true });
+  }
+} catch (err) {
+  staticUploadsDir = path.join(require('os').tmpdir(), 'uploads');
+  try {
+    if (!fs.existsSync(staticUploadsDir)) {
+      fs.mkdirSync(staticUploadsDir, { recursive: true });
+    }
+  } catch (e) {}
+}
+app.use('/uploads', express.static(staticUploadsDir));
 
 // Attach io to request (so routes can emit events)
 app.use((req, res, next) => {

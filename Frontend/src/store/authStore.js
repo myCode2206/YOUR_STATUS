@@ -30,6 +30,25 @@ const useAuthStore = create(
         }
       },
 
+      loginWithGoogle: async (idToken) => {
+        set({ isLoading: true, error: null });
+        try {
+          const { data } = await authAPI.googleLogin(idToken);
+          localStorage.setItem('ys_token', data.token);
+          set({
+            user: data.user,
+            token: data.token,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          return { success: true };
+        } catch (err) {
+          const message = err.response?.data?.message || 'Google login failed';
+          set({ error: message, isLoading: false });
+          return { success: false, message };
+        }
+      },
+
       register: async (userData) => {
         set({ isLoading: true, error: null });
         try {

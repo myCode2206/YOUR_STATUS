@@ -5,6 +5,7 @@ const Activity = require('../models/Activity');
 const Notification = require('../models/Notification');
 const { protect } = require('../middleware/auth');
 const { uploadAvatar } = require('../middleware/upload');
+const { saveUploadedFile } = require('../utils/fileSaver');
 const { getDayAnalytics, getWeeklyAnalytics, computeStreak, computeXP, formatDuration } = require('../utils/analytics');
 
 // @route   GET /api/users/:id/profile
@@ -78,7 +79,7 @@ router.post('/me/avatar', protect, uploadAvatar.single('avatar'), async (req, re
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
 
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    const avatarUrl = await saveUploadedFile(req.file, 'avatars');
     const user = await User.findByIdAndUpdate(
       req.user._id,
       { avatar: avatarUrl },
