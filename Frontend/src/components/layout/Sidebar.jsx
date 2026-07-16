@@ -21,7 +21,7 @@ const navItems = [
   { to: '/profile', icon: RiUserFill, label: 'Profile' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
   const { user, logout } = useAuthStore();
   const { currentActivity } = useActivityStore();
   const [collapsed, setCollapsed] = useState(false);
@@ -35,7 +35,15 @@ export default function Sidebar() {
 
   return (
     <>
-      <aside className="sidebar" style={{ width: collapsed ? '68px' : 'var(--sidebar-width)' }}>
+      {/* Mobile Overlay */}
+      {mobileMenuOpen && (
+        <div 
+          className="sidebar-overlay" 
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`} style={{ width: collapsed ? '68px' : 'var(--sidebar-width)' }}>
         {/* Header */}
         <div className="sidebar-header" style={{ padding: collapsed ? '20px 18px' : undefined }}>
           <div className="sidebar-logo">🔥</div>
@@ -45,7 +53,7 @@ export default function Sidebar() {
             </div>
           )}
           <button
-            className="btn btn-ghost btn-icon"
+            className="btn btn-ghost btn-icon desktop-collapse-btn"
             style={{ marginLeft: 'auto', flexShrink: 0 }}
             onClick={() => setCollapsed(!collapsed)}
           >

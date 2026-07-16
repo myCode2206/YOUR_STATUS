@@ -64,10 +64,10 @@ export default function Dashboard() {
 
   return (
     <div className="page-container">
-      <div className="grid-3 mb-6">
+      <div className="dashboard-top-grid mb-6">
         
         {/* Main Status Card */}
-        <div className="current-activity-card" style={{ gridColumn: 'span 2' }}>
+        <div className="current-activity-card dashboard-status-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>

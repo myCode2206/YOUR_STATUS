@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RiBellFill, RiSearchLine, RiCheckDoubleLine } from 'react-icons/ri';
+import { RiBellFill, RiSearchLine, RiCheckDoubleLine, RiMenuLine } from 'react-icons/ri';
 import useAuthStore from '../../store/authStore';
 import useActivityStore from '../../store/activityStore';
 import { usersAPI } from '../../api';
@@ -9,7 +9,7 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
 
-export default function Navbar({ title }) {
+export default function Navbar({ title, setMobileMenuOpen }) {
   const { user } = useAuthStore();
   const { currentActivity, elapsedSeconds } = useActivityStore();
   const [notifications, setNotifications] = useState([]);
@@ -46,12 +46,20 @@ export default function Navbar({ title }) {
 
   return (
     <header className="navbar">
-      {/* Title */}
-      <h1 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>{title}</h1>
+      <button 
+        className="btn btn-ghost btn-icon mobile-menu-btn" 
+        style={{ marginRight: 8 }}
+        onClick={() => setMobileMenuOpen(true)}
+      >
+        <RiMenuLine size={20} />
+      </button>
 
-      {/* Live Status Pill */}
+      {/* Title */}
+      <h1 className="navbar-title-text" style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>{title}</h1>
+
+      {/* Live Status Pill — hidden on mobile */}
       {currentActivity && (
-        <div style={{
+        <div className="navbar-live-pill" style={{
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
@@ -121,7 +129,7 @@ export default function Navbar({ title }) {
           {showNotifs && (
             <>
               <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setShowNotifs(false)} />
-              <div style={{
+              <div className="notif-dropdown" style={{
                 position: 'absolute', top: '48px', right: 0,
                 width: 360, maxHeight: 480,
                 background: 'var(--color-bg-elevated)',

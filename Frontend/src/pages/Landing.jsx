@@ -126,23 +126,7 @@ export default function Landing() {
             </button>
           </form>
 
-          <div style={{ display: 'flex', alignItems: 'center', margin: '24px 0', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
-            <span style={{ padding: '0 12px' }}>or continue with</span>
-            <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
-          </div>
-
-          <button 
-            type="button" 
-            className="btn btn-ghost btn-lg" 
-            style={{ width: '100%', display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center', border: '1px solid var(--color-border-strong)', borderRadius: 'var(--radius-lg)', background: 'rgba(255,255,255,0.02)' }}
-            onClick={handleGoogleSignIn}
-          >
-            <RiGoogleFill size={20} style={{ color: '#ea4335' }} />
-            Google
-          </button>
-
-          <p className="landing-switch" style={{ marginTop: 24 }}>
+          <p className="landing-switch">
             {isLogin ? "Don't have an account? " : 'Already have an account? '}
             <button onClick={() => setIsLogin(!isLogin)}>
               {isLogin ? 'Sign up' : 'Sign in'}

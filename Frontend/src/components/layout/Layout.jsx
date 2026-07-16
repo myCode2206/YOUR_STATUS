@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
@@ -18,6 +18,7 @@ const pageTitles = {
 export default function Layout({ children }) {
   const { fetchCurrent } = useActivityStore();
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   useSocket(); // Initialize socket
 
   const title = pageTitles[location.pathname] || 'Your Status';
@@ -25,13 +26,21 @@ export default function Layout({ children }) {
   useEffect(() => {
     // Always sync current activity on mount/navigation
     fetchCurrent();
-  }, []);
+    // Close mobile menu on route change
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   return (
     <div className="app-shell">
-      <Sidebar />
+      <Sidebar 
+        mobileMenuOpen={mobileMenuOpen} 
+        setMobileMenuOpen={setMobileMenuOpen} 
+      />
       <div className="main-content">
-        <Navbar title={title} />
+        <Navbar 
+          title={title} 
+          setMobileMenuOpen={setMobileMenuOpen} 
+        />
         <main style={{ padding: '0' }}>
           {children}
         </main>

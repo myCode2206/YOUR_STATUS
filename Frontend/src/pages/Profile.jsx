@@ -130,7 +130,7 @@ export default function Profile() {
       <div className="card mb-6" style={{ position: 'relative', padding: 0, overflow: 'hidden' }}>
         <div style={{ height: 120, background: 'var(--gradient-fire)' }} />
         
-        <div style={{ padding: '0 32px 32px', display: 'flex', alignItems: 'flex-end', marginTop: -40, gap: 24 }}>
+        <div className="profile-header-content">
           <div style={{ position: 'relative' }}>
             <Avatar user={profileUser} size="2xl" className="profile-avatar" style={{ border: '4px solid var(--color-bg-card)' }} />
             {isMe && (
@@ -149,10 +149,10 @@ export default function Profile() {
           </div>
           
           <div style={{ flex: 1, paddingBottom: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <div>
-                <h1 style={{ margin: 0, fontSize: '2rem' }}>{profileUser.displayName}</h1>
-                <div style={{ color: 'var(--color-text-secondary)', fontSize: '1.1rem' }}>@{profileUser.username}</div>
+                <h1 style={{ margin: 0, fontSize: '1.5rem' }}>{profileUser.displayName}</h1>
+                <div style={{ color: 'var(--color-text-secondary)', fontSize: '1rem' }}>@{profileUser.username}</div>
               </div>
               {isMe && (
                 <button className="btn btn-ghost" onClick={() => setIsEditing(!isEditing)}>
