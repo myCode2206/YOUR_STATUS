@@ -126,6 +126,32 @@ export default function Landing() {
             </button>
           </form>
 
+          {/* Google Sign-in Divider & Button */}
+          <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', width: '100%' }}>
+            <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
+            <span style={{ padding: '0 12px', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>or</span>
+            <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
+          </div>
+
+          <button 
+            type="button" 
+            className="btn btn-ghost w-full" 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: 10,
+              padding: '12px 0',
+              border: '1px solid var(--color-border-strong)',
+              borderRadius: 'var(--radius-lg)'
+            }}
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
+          >
+            <RiGoogleFill size={18} style={{ color: '#4285F4' }} />
+            <span>Continue with Google</span>
+          </button>
+
           <p className="landing-switch">
             {isLogin ? "Don't have an account? " : 'Already have an account? '}
             <button onClick={() => setIsLogin(!isLogin)}>
