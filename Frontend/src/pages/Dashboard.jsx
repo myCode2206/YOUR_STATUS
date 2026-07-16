@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [showPicker, setShowPicker] = useState(false);
+  const [toggleLoading, setToggleLoading] = useState(false);
 
   useEffect(() => {
     fetchStats();
@@ -51,14 +52,21 @@ export default function Dashboard() {
   };
 
   const handleToggle = async () => {
+    if (toggleLoading) return;
     if (currentActivity) {
-      const result = await useActivityStore.getState().stopActivity();
-      if (result.success) {
-        toast.success('Activity stopped. You are now idle. 💤');
-        // Refresh stats after stopping
-        fetchStats();
-      } else {
+      setToggleLoading(true);
+      try {
+        const result = await useActivityStore.getState().stopActivity();
+        if (result.success) {
+          toast.success('Activity stopped. You are now idle. 💤');
+          await fetchStats();
+        } else {
+          toast.error('Failed to stop activity');
+        }
+      } catch (err) {
         toast.error('Failed to stop activity');
+      } finally {
+        setToggleLoading(false);
       }
     } else {
       setShowPicker(true);
@@ -102,6 +110,7 @@ export default function Dashboard() {
               
               <button 
                 onClick={handleToggle}
+                disabled={toggleLoading}
                 style={{
                   width: 64,
                   height: 32,
@@ -109,10 +118,11 @@ export default function Dashboard() {
                   background: currentActivity ? 'var(--gradient-fire)' : 'var(--color-bg-elevated)',
                   border: '1px solid var(--color-border-strong)',
                   position: 'relative',
-                  cursor: 'pointer',
+                  cursor: toggleLoading ? 'not-allowed' : 'pointer',
                   padding: 0,
                   transition: 'all 0.3s ease',
-                  boxShadow: currentActivity ? 'var(--shadow-glow-primary)' : 'none'
+                  boxShadow: currentActivity ? 'var(--shadow-glow-primary)' : 'none',
+                  opacity: toggleLoading ? 0.7 : 1,
                 }}
               >
                 <div style={{
@@ -130,7 +140,11 @@ export default function Dashboard() {
                   fontSize: '0.8rem',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                 }}>
-                  {currentActivity ? '📚' : '💤'}
+                  {toggleLoading ? (
+                    <span className="animate-spin" style={{ display: 'inline-block', fontSize: '0.75rem', color: 'var(--color-primary)' }}>⏳</span>
+                  ) : (
+                    currentActivity ? '📚' : '💤'
+                  )}
                 </div>
               </button>
 
