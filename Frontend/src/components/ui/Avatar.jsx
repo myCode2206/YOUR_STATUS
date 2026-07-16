@@ -1,6 +1,13 @@
+import { useState, useEffect } from 'react';
 import { BACKEND_URL } from '../../api';
 
 export default function Avatar({ user, size = 'md', className = '' }) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [user?.avatar]);
+
   const sizeClass = `avatar-${size}`;
   const initials = user?.displayName
     ? user.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -20,18 +27,18 @@ export default function Avatar({ user, size = 'md', className = '' }) {
 
   return (
     <div className="avatar-wrapper">
-      {user?.avatar ? (
+      {user?.avatar && !imgError ? (
         <img
           src={user.avatar.startsWith('/') ? `${BACKEND_URL}${user.avatar}` : user.avatar}
           alt={user.displayName}
           className={`avatar ${sizeClass} ${className}`}
-          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+          onError={() => setImgError(true)}
         />
       ) : null}
       <div
         className={`avatar ${sizeClass} ${className}`}
         style={{
-          display: user?.avatar ? 'none' : 'flex',
+          display: (!user?.avatar || imgError) ? 'flex' : 'none',
           background: `var(--gradient-fire)`,
         }}
       >
