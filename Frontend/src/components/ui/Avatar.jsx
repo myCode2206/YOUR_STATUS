@@ -29,7 +29,13 @@ export default function Avatar({ user, size = 'md', className = '' }) {
     <div className="avatar-wrapper">
       {user?.avatar && !imgError ? (
         <img
-          src={user.avatar.startsWith('/') ? `${BACKEND_URL}${user.avatar}` : user.avatar}
+          src={
+            // data URI (new base64 format) or full https URL (Google OAuth avatar) → use as-is
+            user.avatar.startsWith('data:') || user.avatar.startsWith('http')
+              ? user.avatar
+              // Legacy local /uploads/ path → prepend backend URL
+              : `${BACKEND_URL}${user.avatar}`
+          }
           alt={user.displayName}
           className={`avatar ${sizeClass} ${className}`}
           onError={() => setImgError(true)}

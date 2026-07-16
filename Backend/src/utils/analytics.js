@@ -154,42 +154,66 @@ async function getMonthlyAnalytics(userId) {
  * Compute a user's current streak (consecutive days with study > 0)
  */
 async function computeStreak(userId) {
-  let streak = 0;
-  let longestStreak = 0;
-  let tempStreak = 0;
-  let checking = true;
-  let i = 0;
-
-  while (checking && i < 365) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
+  // Helper: does a given calendar day have >= 60 seconds of qualifying study?
+  const hasStudyOnDay = async (date) => {
     const { start, end } = getDayBounds(date);
-
     const activities = await Activity.find({
       user: userId,
       category: { $in: ['study', 'coding', 'reading'] },
+      endTime: { $ne: null },
       $or: [
         { startTime: { $gte: start, $lte: end } },
         { startTime: { $lt: start }, endTime: { $gte: start } },
       ],
-    }).select('duration startTime endTime');
+    }).select('duration');
+    const total = activities.reduce((sum, a) => sum + (a.duration || 0), 0);
+    return total >= 60;
+  };
 
-    const totalStudy = activities.reduce((sum, a) => sum + (a.duration || 0), 0);
-
-    if (totalStudy >= 60) { // At least 1 minute of study to count for a streak day
-      tempStreak++;
-      if (i === 0 || streak > 0) streak = tempStreak; // Only count current streak
-      if (tempStreak > longestStreak) longestStreak = tempStreak;
-    } else if (i === 0) {
-      // Today's data: don't break streak yet (day isn't over)
-      tempStreak++;
+  // Count consecutive past days (starting from yesterday) with qualifying study
+  let streak = 0;
+  for (let i = 1; i <= 365; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const active = await hasStudyOnDay(date);
+    if (active) {
+      streak++;
     } else {
-      checking = false;
+      break;
     }
-    i++;
   }
 
-  return { streak: tempStreak > 1 ? tempStreak - 1 : 0, longestStreak };
+  // If today already has qualifying study, count it too
+  const todayActive = await hasStudyOnDay(new Date());
+  if (todayActive) streak++;
+
+  // Compute longest streak from all-time history
+  const allActivities = await Activity.find({
+    user: userId,
+    category: { $in: ['study', 'coding', 'reading'] },
+    endTime: { $ne: null },
+    duration: { $gte: 60 },
+  }).select('startTime').sort({ startTime: 1 });
+
+  let longestStreak = streak;
+  if (allActivities.length > 0) {
+    let tempStreak = 1;
+    let maxStreak = 1;
+    for (let i = 1; i < allActivities.length; i++) {
+      const prev = new Date(allActivities[i - 1].startTime);
+      const curr = new Date(allActivities[i].startTime);
+      const dayDiff = Math.floor((curr - prev) / (1000 * 60 * 60 * 24));
+      if (dayDiff <= 1) {
+        tempStreak++;
+        if (tempStreak > maxStreak) maxStreak = tempStreak;
+      } else {
+        tempStreak = 1;
+      }
+    }
+    longestStreak = Math.max(streak, maxStreak);
+  }
+
+  return { streak, longestStreak };
 }
 
 /**

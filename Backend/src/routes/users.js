@@ -74,23 +74,36 @@ router.put('/me', protect, async (req, res) => {
 });
 
 // @route   POST /api/users/me/avatar
-// @desc    Upload avatar
+// @desc    Upload avatar — resized to 200x200 JPEG, stored as base64 data URI in MongoDB
+//          This bypasses Firebase Storage / local disk entirely and works on Vercel.
 router.post('/me/avatar', protect, uploadAvatar.single('avatar'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
 
-    const avatarUrl = await saveUploadedFile(req.file, 'avatars');
+    const sharp = require('sharp');
+
+    // Resize to 200×200, convert to JPEG at 80% quality (~15–20 KB)
+    const compressedBuffer = await sharp(req.file.buffer)
+      .resize(200, 200, { fit: 'cover', position: 'center' })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    // Encode as data URI so it can be embedded directly in <img src>
+    const dataUri = `data:image/jpeg;base64,${compressedBuffer.toString('base64')}`;
+
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { avatar: avatarUrl },
+      { avatar: dataUri },
       { new: true }
     ).select('-password');
 
-    res.json({ success: true, avatar: avatarUrl, user });
+    res.json({ success: true, avatar: dataUri, user });
   } catch (error) {
+    console.error('Avatar upload error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
 
 // @route   GET /api/users/me/stats
 // @desc    Get full stats for current user
