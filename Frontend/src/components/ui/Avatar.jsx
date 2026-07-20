@@ -14,15 +14,26 @@ export default function Avatar({ user, size = 'md', className = '' }) {
     : user?.username?.[0]?.toUpperCase() || '?';
 
   const isStudying = !!user?.currentActivity;
+  const isPaused = !!user?.currentActivity?.isPaused;
   const isOnline = user?.isOnline;
 
   // Show dot only if we have online info or activity info
   const showDot = isOnline !== undefined || user?.currentActivity !== undefined;
 
-  const dotColor = isStudying ? '#22c55e' : '#6b7280'; // green if studying, grey if idle
-  const dotShadow = isStudying ? '0 0 6px rgba(34, 197, 94, 0.7)' : 'none';
+  let dotColor = '#6b7280'; // grey if idle
+  let dotShadow = 'none';
+  if (isStudying) {
+    if (isPaused) {
+      dotColor = '#f59e0b'; // orange if paused
+      dotShadow = '0 0 6px rgba(245, 158, 11, 0.7)';
+    } else {
+      dotColor = '#22c55e'; // green if studying
+      dotShadow = '0 0 6px rgba(34, 197, 94, 0.7)';
+    }
+  }
+  
   const dotTitle = isStudying
-    ? `${user.currentActivity?.emoji || '📚'} ${user.currentActivity?.name || 'Studying'}`
+    ? `${user.currentActivity?.emoji || '📚'} ${user.currentActivity?.name || 'Studying'}${isPaused ? ' (Paused)' : ''}`
     : 'Idle';
 
   return (
@@ -57,7 +68,7 @@ export default function Avatar({ user, size = 'md', className = '' }) {
           style={{
             background: dotColor,
             boxShadow: dotShadow,
-            animation: isStudying ? 'pulse 2s ease-in-out infinite' : 'none',
+            animation: isStudying && !isPaused ? 'pulse 2s ease-in-out infinite' : 'none',
           }}
         />
       )}

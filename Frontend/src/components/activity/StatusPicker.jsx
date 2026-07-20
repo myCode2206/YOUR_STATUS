@@ -68,7 +68,10 @@ export default function StatusPicker({ onClose }) {
           }}>
             <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--color-primary)', boxShadow: '0 0 10px var(--color-primary)' }} />
             <span style={{ color: 'var(--color-text-secondary)' }}>Currently:</span>
-            <span style={{ fontWeight: 600 }}>{currentActivity.name}</span>
+            <span style={{ fontWeight: 600 }}>
+              {currentActivity.name}
+              {currentActivity.isPaused && <span style={{ color: 'var(--color-warning)', marginLeft: 4 }}>(Paused)</span>}
+            </span>
             
             <button 
               className="btn btn-ghost btn-sm" 

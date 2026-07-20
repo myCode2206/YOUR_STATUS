@@ -85,13 +85,13 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
               width: collapsed ? 44 : 56,
               height: collapsed ? 24 : 28,
               borderRadius: 14,
-              background: currentActivity ? 'var(--gradient-fire)' : 'var(--color-bg-elevated)',
+              background: currentActivity ? (currentActivity.isPaused ? '#f59e0b' : 'var(--gradient-fire)') : 'var(--color-bg-elevated)',
               border: '1px solid var(--color-border-strong)',
               position: 'relative',
               cursor: 'pointer',
               padding: 0,
               transition: 'all 0.3s ease',
-              boxShadow: currentActivity ? 'var(--shadow-glow-primary)' : 'none'
+              boxShadow: currentActivity ? (currentActivity.isPaused ? '0 0 10px rgba(245, 158, 11, 0.4)' : 'var(--shadow-glow-primary)') : 'none'
             }}
             title={collapsed ? (currentActivity ? 'Go Idle' : 'Start Studying') : undefined}
           >
@@ -110,12 +110,14 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
               fontSize: collapsed ? '0.65rem' : '0.75rem',
               boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
             }}>
-              {currentActivity ? '📚' : '💤'}
+              {currentActivity ? (currentActivity.isPaused ? '⏸️' : '📚') : '💤'}
             </div>
           </button>
 
           {!collapsed && (
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: currentActivity ? 'var(--color-primary-light)' : 'var(--color-text-muted)' }}>Studying</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: currentActivity ? (currentActivity.isPaused ? '#f59e0b' : 'var(--color-primary-light)') : 'var(--color-text-muted)' }}>
+              {currentActivity ? (currentActivity.isPaused ? 'Paused' : 'Studying') : 'Studying'}
+            </span>
           )}
         </div>
 
@@ -148,9 +150,12 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
               fontSize: '0.8rem',
             }}>
               <div style={{ color: 'var(--color-text-muted)', marginBottom: '4px', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Now</div>
-              <div style={{ fontWeight: 600, color: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span>{currentActivity.emoji}</span>
-                <span className="truncate">{currentActivity.name}</span>
+              <div style={{ fontWeight: 600, color: currentActivity.isPaused ? '#f59e0b' : 'var(--color-primary-light)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>{currentActivity.isPaused ? '⏸️' : currentActivity.emoji}</span>
+                <span className="truncate">
+                  {currentActivity.name}
+                  {currentActivity.isPaused && <span style={{ fontSize: '0.7rem', color: '#f59e0b', marginLeft: 4 }}>(Paused)</span>}
+                </span>
               </div>
             </div>
           )}

@@ -40,10 +40,15 @@ export default function GroupPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const getLiveDuration = (startTime) => {
-    if (!startTime) return 0;
-    const startMs = new Date(startTime).getTime();
-    return Math.max(0, Math.floor((Date.now() - startMs) / 1000));
+  const getLiveDuration = (activity) => {
+    if (!activity || !activity.startTime) return 0;
+    const startMs = new Date(activity.startTime).getTime();
+    const pausedSec = activity.totalPausedDuration || 0;
+    if (activity.isPaused) {
+      const pausedMs = new Date(activity.pausedAt).getTime();
+      return Math.max(0, Math.floor((pausedMs - startMs) / 1000) - pausedSec);
+    }
+    return Math.max(0, Math.floor((Date.now() - startMs) / 1000) - pausedSec);
   };
 
   useEffect(() => {
@@ -248,21 +253,25 @@ export default function GroupPage() {
                 {/* Current Activity Display */}
                 {member.currentActivity ? (
                   <div style={{ 
-                    background: 'rgba(255,107,0,0.1)', 
-                    border: '1px solid rgba(255,107,0,0.2)', 
+                    background: member.currentActivity.isPaused ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,107,0,0.1)', 
+                    border: member.currentActivity.isPaused ? '1px solid rgba(245, 158, 11, 0.2)' : '1px solid rgba(255,107,0,0.2)', 
                     padding: '12px 16px', 
                     borderRadius: 'var(--radius-md)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,
                   }}>
-                    <span style={{ fontSize: '1.5rem' }}>{member.currentActivity.emoji}</span>
+                    <span style={{ fontSize: '1.5rem' }}>{member.currentActivity.isPaused ? '⏸️' : member.currentActivity.emoji}</span>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Currently</div>
-                      <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{member.currentActivity.name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {member.currentActivity.isPaused ? 'Paused' : 'Currently'}
+                      </div>
+                      <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                        {member.currentActivity.name}
+                      </div>
                     </div>
-                    <div style={{ fontFamily: 'JetBrains Mono', color: 'var(--color-primary-light)', fontWeight: 700 }}>
-                      {formatDuration(getLiveDuration(member.currentActivity.startTime))}
+                    <div style={{ fontFamily: 'JetBrains Mono', color: member.currentActivity.isPaused ? '#f59e0b' : 'var(--color-primary-light)', fontWeight: 700 }}>
+                      {formatDuration(getLiveDuration(member.currentActivity))}
                     </div>
                   </div>
                 ) : (
