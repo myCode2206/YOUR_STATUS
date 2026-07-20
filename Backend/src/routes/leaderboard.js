@@ -17,6 +17,13 @@ const BADGES = {
 async function getMemberStats(userId, period = 'daily') {
   const now = new Date();
 
+  // Fetch current ongoing study activity if any
+  const activeActivity = await Activity.findOne({
+    user: userId,
+    endTime: null,
+    category: { $in: ['study', 'coding', 'reading'] },
+  });
+
   if (period === 'daily') {
     const { start, end } = getDayBounds(now);
     const result = await Activity.aggregate([
@@ -30,7 +37,21 @@ async function getMemberStats(userId, period = 'daily') {
       },
       { $group: { _id: null, totalSeconds: { $sum: '$duration' }, sessions: { $sum: 1 } } },
     ]);
-    return { totalSeconds: result[0]?.totalSeconds || 0, sessions: result[0]?.sessions || 0 };
+
+    let activeSeconds = 0;
+    let activeSessionCount = 0;
+    if (activeActivity) {
+      const effectiveStart = activeActivity.startTime < start ? start : activeActivity.startTime;
+      if (effectiveStart < now) {
+        activeSeconds = Math.floor((now - effectiveStart) / 1000);
+        activeSessionCount = 1;
+      }
+    }
+
+    return {
+      totalSeconds: (result[0]?.totalSeconds || 0) + activeSeconds,
+      sessions: (result[0]?.sessions || 0) + activeSessionCount,
+    };
   }
 
   if (period === 'weekly') {
@@ -51,12 +72,28 @@ async function getMemberStats(userId, period = 'daily') {
       },
       { $group: { _id: null, totalSeconds: { $sum: '$duration' }, sessions: { $sum: 1 } } },
     ]);
-    return { totalSeconds: result[0]?.totalSeconds || 0, sessions: result[0]?.sessions || 0 };
+
+    let activeSeconds = 0;
+    let activeSessionCount = 0;
+    if (activeActivity) {
+      const effectiveStart = activeActivity.startTime < startOfWeek ? startOfWeek : activeActivity.startTime;
+      if (effectiveStart < now) {
+        activeSeconds = Math.floor((now - effectiveStart) / 1000);
+        activeSessionCount = 1;
+      }
+    }
+
+    return {
+      totalSeconds: (result[0]?.totalSeconds || 0) + activeSeconds,
+      sessions: (result[0]?.sessions || 0) + activeSessionCount,
+    };
   }
 
   if (period === 'monthly') {
     const monthAgo = new Date(now);
     monthAgo.setDate(monthAgo.getDate() - 30);
+    monthAgo.setHours(0, 0, 0, 0);
+
     const result = await Activity.aggregate([
       {
         $match: {
@@ -68,8 +105,49 @@ async function getMemberStats(userId, period = 'daily') {
       },
       { $group: { _id: null, totalSeconds: { $sum: '$duration' }, sessions: { $sum: 1 } } },
     ]);
-    return { totalSeconds: result[0]?.totalSeconds || 0, sessions: result[0]?.sessions || 0 };
+
+    let activeSeconds = 0;
+    let activeSessionCount = 0;
+    if (activeActivity) {
+      const effectiveStart = activeActivity.startTime < monthAgo ? monthAgo : activeActivity.startTime;
+      if (effectiveStart < now) {
+        activeSeconds = Math.floor((now - effectiveStart) / 1000);
+        activeSessionCount = 1;
+      }
+    }
+
+    return {
+      totalSeconds: (result[0]?.totalSeconds || 0) + activeSeconds,
+      sessions: (result[0]?.sessions || 0) + activeSessionCount,
+    };
   }
+
+  if (period === 'allTime') {
+    const result = await Activity.aggregate([
+      {
+        $match: {
+          user: userId,
+          category: { $in: ['study', 'coding', 'reading'] },
+          endTime: { $ne: null },
+        },
+      },
+      { $group: { _id: null, totalSeconds: { $sum: '$duration' }, sessions: { $sum: 1 } } },
+    ]);
+
+    let activeSeconds = 0;
+    let activeSessionCount = 0;
+    if (activeActivity) {
+      activeSeconds = Math.floor((now - activeActivity.startTime) / 1000);
+      activeSessionCount = 1;
+    }
+
+    return {
+      totalSeconds: (result[0]?.totalSeconds || 0) + activeSeconds,
+      sessions: (result[0]?.sessions || 0) + activeSessionCount,
+    };
+  }
+
+  return { totalSeconds: 0, sessions: 0 };
 }
 
 // @route   GET /api/leaderboard/:groupId

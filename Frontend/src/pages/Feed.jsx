@@ -14,7 +14,7 @@ dayjs.extend(relativeTime);
 export default function Feed() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { currentGroup, feed, fetchFeed, addPost, updatePostLike, addComment } = useGroupStore();
+  const { currentGroup, feed, fetchFeed, addPost, updatePostLike, addComment, feedGroupId } = useGroupStore();
   const [content, setContent] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
   const [mediaPreview, setMediaPreview] = useState(null);
@@ -27,10 +27,17 @@ export default function Feed() {
 
   useEffect(() => {
     if (currentGroup) {
-      setInitialLoading(true);
-      fetchFeed(currentGroup._id, true).finally(() => setInitialLoading(false));
+      const hasFeedForGroup = feedGroupId === currentGroup._id && feed.length > 0;
+      if (!hasFeedForGroup) {
+        setInitialLoading(true);
+        fetchFeed(currentGroup._id, true).finally(() => setInitialLoading(false));
+      } else {
+        setInitialLoading(false);
+        // Silent background update
+        fetchFeed(currentGroup._id, true);
+      }
     }
-  }, [currentGroup?._id]);
+  }, [currentGroup?._id, feedGroupId]);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];

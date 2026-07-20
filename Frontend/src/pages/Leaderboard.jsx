@@ -10,28 +10,20 @@ import { RiFireFill } from 'react-icons/ri';
 export default function Leaderboard() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { currentGroup } = useGroupStore();
+  const {
+    currentGroup,
+    leaderboard,
+    leaderboardMeta: meta,
+    isLeaderboardLoading: loading,
+    fetchLeaderboard,
+  } = useGroupStore();
   const [period, setPeriod] = useState('daily');
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [meta, setMeta] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (currentGroup) fetchLeaderboard();
-  }, [currentGroup?._id, period]);
-
-  const fetchLeaderboard = async () => {
-    setLoading(true);
-    try {
-      const { data } = await leaderboardAPI.get(currentGroup._id, period);
-      setLeaderboard(data.leaderboard);
-      setMeta(data.meta);
-    } catch (e) {
-      console.error('Failed to load leaderboard');
-    } finally {
-      setLoading(false);
+    if (currentGroup) {
+      fetchLeaderboard(currentGroup._id, period);
     }
-  };
+  }, [currentGroup?._id, period]);
 
   const formatHours = (secs) => {
     if (!secs) return '0m 0s';

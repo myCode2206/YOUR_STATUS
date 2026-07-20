@@ -55,20 +55,22 @@ router.post('/start', protect, async (req, res) => {
 
     // Emit real-time update via socket (accessed via req.io)
     if (req.io) {
-      const user = await User.findById(req.user._id).select('username displayName avatar');
+      const user = await User.findById(req.user._id).select('username displayName avatar groups');
       req.io.to(`user_${req.user._id}`).emit('activity-updated', {
         userId: req.user._id,
         activity: newActivity,
       });
 
-      // If group activity, notify group room
-      if (groupId) {
-        req.io.to(`group_${groupId}`).emit('member-activity-updated', {
-          userId: req.user._id,
-          user: { username: user.username, displayName: user.displayName, avatar: user.avatar },
-          activity: newActivity,
-          previousActivity: previousActivity || null,
-        });
+      // Notify all user's groups of the activity change
+      if (user.groups && user.groups.length > 0) {
+        for (const gId of user.groups) {
+          req.io.to(`group_${gId}`).emit('member-activity-updated', {
+            userId: req.user._id,
+            user: { username: user.username, displayName: user.displayName, avatar: user.avatar },
+            activity: newActivity,
+            previousActivity: previousActivity || null,
+          });
+        }
       }
     }
 
@@ -103,6 +105,26 @@ router.post('/stop', protect, async (req, res) => {
     await currentActivity.save();
 
     await User.findByIdAndUpdate(req.user._id, { currentActivity: null });
+
+    // Emit real-time update via socket (user went idle)
+    if (req.io) {
+      const user = await User.findById(req.user._id).select('username displayName avatar groups');
+      req.io.to(`user_${req.user._id}`).emit('activity-updated', {
+        userId: req.user._id,
+        activity: null,
+      });
+
+      if (user.groups && user.groups.length > 0) {
+        for (const gId of user.groups) {
+          req.io.to(`group_${gId}`).emit('member-activity-updated', {
+            userId: req.user._id,
+            user: { username: user.username, displayName: user.displayName, avatar: user.avatar },
+            activity: null,
+            previousActivity: currentActivity || null,
+          });
+        }
+      }
+    }
 
     res.json({ success: true, activity: currentActivity });
   } catch (error) {

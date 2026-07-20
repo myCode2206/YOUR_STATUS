@@ -2,27 +2,49 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import useGroupStore from '../store/groupStore';
+import useSocket from '../hooks/useSocket';
 import { groupsAPI } from '../api';
 import Avatar from '../components/ui/Avatar';
 import Modal from '../components/ui/Modal';
 import toast from 'react-hot-toast';
 import { RiAddLine, RiFileCopyLine, RiUserAddLine, RiTrophyLine, RiGroupLine, RiFireFill } from 'react-icons/ri';
-import { leaderboardAPI } from '../api';
 import Loader from '../components/ui/Loader';
 
 export default function GroupPage() {
-  const { user } = useAuthStore();
-  const { currentGroup, members, fetchGroup, fetchMembers, setGroup } = useGroupStore();
+  const { user, refreshUser } = useAuthStore();
+  const {
+    currentGroup,
+    members,
+    fetchGroup,
+    fetchMembers,
+    setGroup,
+    leaderboard,
+    leaderboardMeta,
+    isLeaderboardLoading,
+    fetchLeaderboard,
+  } = useGroupStore();
+  const { joinGroup } = useSocket();
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '', inviteCode: '' });
   const [activeTab, setActiveTab] = useState('members'); // 'members' or 'leaderboard'
   const [period, setPeriod] = useState('daily');
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [leaderboardMeta, setLeaderboardMeta] = useState(null);
-  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const navigate = useNavigate();
+
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick(t => t + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getLiveDuration = (startTime) => {
+    if (!startTime) return 0;
+    const startMs = new Date(startTime).getTime();
+    return Math.max(0, Math.floor((Date.now() - startMs) / 1000));
+  };
 
   useEffect(() => {
     if (user?.groups?.length > 0) {
@@ -32,22 +54,9 @@ export default function GroupPage() {
 
   useEffect(() => {
     if (currentGroup?._id && activeTab === 'leaderboard') {
-      fetchLeaderboard();
+      fetchLeaderboard(currentGroup._id, period);
     }
   }, [currentGroup?._id, activeTab, period]);
-
-  const fetchLeaderboard = async () => {
-    setLeaderboardLoading(true);
-    try {
-      const { data } = await leaderboardAPI.get(currentGroup._id, period);
-      setLeaderboard(data.leaderboard);
-      setLeaderboardMeta(data.meta);
-    } catch (e) {
-      toast.error('Failed to load leaderboard');
-    } finally {
-      setLeaderboardLoading(false);
-    }
-  };
 
   const loadGroup = async (id) => {
     await fetchGroup(id);
@@ -59,6 +68,8 @@ export default function GroupPage() {
     try {
       const { data } = await groupsAPI.create({ name: formData.name, description: formData.description });
       toast.success('Group created!');
+      await refreshUser();
+      joinGroup(data.group._id);
       loadGroup(data.group._id);
       setShowCreate(false);
     } catch (err) {
@@ -71,6 +82,8 @@ export default function GroupPage() {
     try {
       const { data } = await groupsAPI.join(formData.inviteCode);
       toast.success('Joined group!');
+      await refreshUser();
+      joinGroup(data.group._id);
       loadGroup(data.group._id);
       setShowJoin(false);
     } catch (err) {
@@ -249,7 +262,7 @@ export default function GroupPage() {
                       <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{member.currentActivity.name}</div>
                     </div>
                     <div style={{ fontFamily: 'JetBrains Mono', color: 'var(--color-primary-light)', fontWeight: 700 }}>
-                      {formatDuration(member.currentActivity.elapsed)}
+                      {formatDuration(getLiveDuration(member.currentActivity.startTime))}
                     </div>
                   </div>
                 ) : (
@@ -297,7 +310,7 @@ export default function GroupPage() {
 
           {/* Leaderboard list */}
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            {leaderboardLoading ? (
+            {isLeaderboardLoading ? (
               <Loader text="Fetching leaderboard..." />
             ) : leaderboard.length === 0 ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>

@@ -29,6 +29,15 @@ export const useSocket = () => {
     socket.on('connect', () => {
       console.log('🔌 Socket connected');
       socket.emit('authenticate', { userId: user._id });
+      
+      // Auto-join all group socket rooms that the user is a member of
+      if (user?.groups && user.groups.length > 0) {
+        user.groups.forEach(g => {
+          const gId = g._id || g;
+          socket.emit('join-group', { groupId: gId });
+          console.log(`🔌 Sent join-group for ${gId}`);
+        });
+      }
     });
 
     socket.on('disconnect', () => {
