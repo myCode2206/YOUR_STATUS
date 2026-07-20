@@ -17,11 +17,20 @@ const projectId = process.env.FIREBASE_PROJECT_ID;
 const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
 const rawKey = process.env.FIREBASE_PRIVATE_KEY;
-const privateKey = rawKey
-  ? rawKey.includes('\\n')
-    ? rawKey.replace(/\\n/g, '\n')
-    : rawKey
-  : undefined;
+
+let privateKey = rawKey;
+if (privateKey) {
+  // Strip surrounding quotes if present
+  if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+    privateKey = privateKey.slice(1, -1);
+  }
+  if (privateKey.startsWith("'") && privateKey.endsWith("'")) {
+    privateKey = privateKey.slice(1, -1);
+  }
+  // Replace escaped newlines
+  privateKey = privateKey.replace(/\\n/g, '\n');
+}
+
 const hasEnvCreds = !!(projectId && clientEmail && privateKey && storageBucket);
 
 if (hasJsonFile || hasBase64 || hasEnvCreds) {

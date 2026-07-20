@@ -14,7 +14,7 @@ router.get('/:id/profile', protect, async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
       .select('-password')
-      .populate('currentActivity', 'name emoji category startTime')
+      .populate('currentActivity', 'name emoji category startTime isPaused pausedAt totalPausedDuration')
       .populate('groups', 'name avatar');
 
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
@@ -203,6 +203,24 @@ router.put('/me/notifications/read', protect, async (req, res) => {
   try {
     await Notification.updateMany({ recipient: req.user._id, read: false }, { read: true });
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   PUT /api/users/me/notifications/:id/read
+// @desc    Mark a single notification as read
+router.put('/me/notifications/:id/read', protect, async (req, res) => {
+  try {
+    const notif = await Notification.findOneAndUpdate(
+      { _id: req.params.id, recipient: req.user._id },
+      { read: true },
+      { new: true }
+    );
+    if (!notif) {
+      return res.status(404).json({ success: false, message: 'Notification not found' });
+    }
+    res.json({ success: true, notification: notif });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

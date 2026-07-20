@@ -159,7 +159,7 @@ router.get('/:groupId', protect, async (req, res) => {
     const group = await Group.findById(req.params.groupId).populate({
       path: 'members',
       select: 'username displayName avatar streak longestStreak xp level currentActivity isOnline',
-      populate: { path: 'currentActivity', select: 'name emoji category startTime' },
+      populate: { path: 'currentActivity', select: 'name emoji category startTime isPaused pausedAt totalPausedDuration' },
     });
 
     if (!group) return res.status(404).json({ success: false, message: 'Group not found' });

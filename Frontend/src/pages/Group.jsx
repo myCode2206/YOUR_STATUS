@@ -52,10 +52,14 @@ export default function GroupPage() {
   };
 
   useEffect(() => {
+    if (currentGroup?._id) {
+      if (members.length === 0) fetchMembers(currentGroup._id);
+      return;
+    }
     if (user?.groups?.length > 0) {
       loadGroup(user.groups[0]._id || user.groups[0]);
     }
-  }, [user]);
+  }, [user, currentGroup?._id, members.length]);
 
   useEffect(() => {
     if (currentGroup?._id && activeTab === 'leaderboard') {
@@ -229,7 +233,21 @@ export default function GroupPage() {
         <>
           <h3 style={{ marginBottom: 20 }}>Group Members</h3>
           <div className="grid-3">
-            {members.map(member => (
+            {[...members].sort((a, b) => {
+              const aStudying = !!a.currentActivity && !a.currentActivity.isPaused;
+              const bStudying = !!b.currentActivity && !b.currentActivity.isPaused;
+              if (aStudying !== bStudying) return aStudying ? -1 : 1;
+
+              const aPaused = !!a.currentActivity && a.currentActivity.isPaused;
+              const bPaused = !!b.currentActivity && b.currentActivity.isPaused;
+              if (aPaused !== bPaused) return aPaused ? -1 : 1;
+
+              const aOnline = !!a.isOnline;
+              const bOnline = !!b.isOnline;
+              if (aOnline !== bOnline) return aOnline ? -1 : 1;
+
+              return (a.displayName || '').localeCompare(b.displayName || '');
+            }).map(member => (
               <div 
                 key={member._id} 
                 className="card" 
