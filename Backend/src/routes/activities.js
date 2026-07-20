@@ -32,8 +32,12 @@ router.post('/start', protect, async (req, res) => {
     });
 
     if (previousActivity) {
-      previousActivity.endTime = now;
-      previousActivity.duration = Math.floor((now - previousActivity.startTime) / 1000);
+      if (previousActivity.isPaused) {
+        previousActivity.endTime = previousActivity.pausedAt || now;
+      } else {
+        previousActivity.endTime = now;
+      }
+      previousActivity.duration = Math.max(0, Math.floor((previousActivity.endTime - previousActivity.startTime) / 1000) - (previousActivity.totalPausedDuration || 0));
       await previousActivity.save();
     }
 
@@ -100,8 +104,12 @@ router.post('/stop', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'No active activity found' });
     }
 
-    currentActivity.endTime = now;
-    currentActivity.duration = Math.floor((now - currentActivity.startTime) / 1000);
+    if (currentActivity.isPaused) {
+      currentActivity.endTime = currentActivity.pausedAt || now;
+    } else {
+      currentActivity.endTime = now;
+    }
+    currentActivity.duration = Math.max(0, Math.floor((currentActivity.endTime - currentActivity.startTime) / 1000) - (currentActivity.totalPausedDuration || 0));
     await currentActivity.save();
 
     await User.findByIdAndUpdate(req.user._id, { currentActivity: null });
@@ -132,6 +140,102 @@ router.post('/stop', protect, async (req, res) => {
   }
 });
 
+// @route   POST /api/activities/pause
+// @desc    Pause current activity
+router.post('/pause', protect, async (req, res) => {
+  try {
+    const now = new Date();
+    const currentActivity = await Activity.findOne({
+      user: req.user._id,
+      endTime: null,
+    });
+
+    if (!currentActivity) {
+      return res.status(404).json({ success: false, message: 'No active activity found' });
+    }
+
+    if (currentActivity.isPaused) {
+      return res.status(400).json({ success: false, message: 'Activity is already paused' });
+    }
+
+    currentActivity.isPaused = true;
+    currentActivity.pausedAt = now;
+    await currentActivity.save();
+
+    // Emit real-time update via socket
+    if (req.io) {
+      const user = await User.findById(req.user._id).select('username displayName avatar groups');
+      req.io.to(`user_${req.user._id}`).emit('activity-updated', {
+        userId: req.user._id,
+        activity: currentActivity,
+      });
+
+      if (user.groups && user.groups.length > 0) {
+        for (const gId of user.groups) {
+          req.io.to(`group_${gId}`).emit('member-activity-updated', {
+            userId: req.user._id,
+            user: { username: user.username, displayName: user.displayName, avatar: user.avatar },
+            activity: currentActivity,
+          });
+        }
+      }
+    }
+
+    res.json({ success: true, activity: currentActivity });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   POST /api/activities/resume
+// @desc    Resume current activity
+router.post('/resume', protect, async (req, res) => {
+  try {
+    const now = new Date();
+    const currentActivity = await Activity.findOne({
+      user: req.user._id,
+      endTime: null,
+    });
+
+    if (!currentActivity) {
+      return res.status(404).json({ success: false, message: 'No active activity found' });
+    }
+
+    if (!currentActivity.isPaused) {
+      return res.status(400).json({ success: false, message: 'Activity is not paused' });
+    }
+
+    const pausedSec = Math.max(0, Math.floor((now - currentActivity.pausedAt) / 1000));
+    currentActivity.totalPausedDuration = (currentActivity.totalPausedDuration || 0) + pausedSec;
+    currentActivity.isPaused = false;
+    currentActivity.pausedAt = null;
+    await currentActivity.save();
+
+    // Emit real-time update via socket
+    if (req.io) {
+      const user = await User.findById(req.user._id).select('username displayName avatar groups');
+      req.io.to(`user_${req.user._id}`).emit('activity-updated', {
+        userId: req.user._id,
+        activity: currentActivity,
+      });
+
+      if (user.groups && user.groups.length > 0) {
+        for (const gId of user.groups) {
+          req.io.to(`group_${gId}`).emit('member-activity-updated', {
+            userId: req.user._id,
+            user: { username: user.username, displayName: user.displayName, avatar: user.avatar },
+            activity: currentActivity,
+          });
+        }
+      }
+    }
+
+    res.json({ success: true, activity: currentActivity });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // @route   GET /api/activities/current
 // @desc    Get current ongoing activity with server-computed elapsed time
 router.get('/current', protect, async (req, res) => {
@@ -146,7 +250,12 @@ router.get('/current', protect, async (req, res) => {
     }
 
     const now = new Date();
-    const elapsed = Math.floor((now - activity.startTime) / 1000); // seconds on SERVER
+    let elapsed = 0;
+    if (activity.isPaused) {
+      elapsed = Math.max(0, Math.floor((activity.pausedAt - activity.startTime) / 1000) - (activity.totalPausedDuration || 0));
+    } else {
+      elapsed = Math.max(0, Math.floor((now - activity.startTime) / 1000) - (activity.totalPausedDuration || 0));
+    }
 
     res.json({
       success: true,

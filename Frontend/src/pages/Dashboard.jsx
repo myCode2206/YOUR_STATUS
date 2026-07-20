@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import useAuthStore from '../store/authStore';
 import useActivityStore from '../store/activityStore';
 import { usersAPI } from '../api';
-import { RiFireFill, RiTimeLine, RiBarChart2Fill, RiFlashlightFill } from 'react-icons/ri';
+import { RiFireFill, RiTimeLine, RiBarChart2Fill, RiFlashlightFill, RiPlayLine, RiPauseLine, RiCloseLine } from 'react-icons/ri';
 import ProgressRing from '../components/charts/ProgressRing';
 import WeeklyBarChart from '../components/charts/WeeklyBarChart';
 import StatusPicker from '../components/activity/StatusPicker';
@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 
 export default function Dashboard() {
   const { user, updateUser } = useAuthStore();
-  const { currentActivity, getElapsedFormatted } = useActivityStore();
+  const { currentActivity, getElapsedFormatted, pauseActivity, resumeActivity } = useActivityStore();
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [showPicker, setShowPicker] = useState(false);
@@ -90,9 +90,132 @@ export default function Dashboard() {
                     <span>{currentActivity.emoji}</span>
                     {currentActivity.name}
                   </div>
-                  <div className="activity-timer">{getElapsedFormatted()}</div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                    <div className="activity-timer" style={{
+                      opacity: currentActivity.isPaused ? 0.5 : 1,
+                      transition: 'opacity 0.3s ease',
+                    }}>
+                      {getElapsedFormatted()}
+                    </div>
+                    {currentActivity.isPaused ? (
+                      <span style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.05em',
+                        padding: '4px 8px',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'rgba(245, 158, 11, 0.12)',
+                        color: '#f59e0b',
+                        border: '1px solid rgba(245, 158, 11, 0.25)',
+                      }}>
+                        PAUSED
+                      </span>
+                    ) : (
+                      <span style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.05em',
+                        padding: '4px 8px',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'rgba(34, 197, 94, 0.12)',
+                        color: '#22c55e',
+                        border: '1px solid rgba(34, 197, 94, 0.25)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}>
+                        <span style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          background: '#22c55e',
+                          display: 'inline-block',
+                          animation: 'pulse 1.5s infinite'
+                        }} />
+                        LIVE
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Pause / Resume & Stop Controls */}
+                  <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+                    {currentActivity.isPaused ? (
+                      <button
+                        className="btn btn-sm"
+                        onClick={async () => {
+                          const result = await resumeActivity();
+                          if (result.success) {
+                            toast.success('Study session resumed! 🔥');
+                          } else {
+                            toast.error(result.message || 'Failed to resume session');
+                          }
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontWeight: 700,
+                          background: 'rgba(34, 197, 94, 0.1)',
+                          color: '#22c55e',
+                          border: '1px solid rgba(34, 197, 94, 0.3)',
+                          padding: '6px 12px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <RiPlayLine size={16} />
+                        Resume
+                      </button>
+                    ) : (
+                      <button
+                        className="btn btn-sm"
+                        onClick={async () => {
+                          const result = await pauseActivity();
+                          if (result.success) {
+                            toast.success('Study session paused.');
+                          } else {
+                            toast.error(result.message || 'Failed to pause session');
+                          }
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontWeight: 700,
+                          background: 'rgba(245, 158, 11, 0.1)',
+                          color: '#f59e0b',
+                          border: '1px solid rgba(245, 158, 11, 0.3)',
+                          padding: '6px 12px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <RiPauseLine size={16} />
+                        Pause
+                      </button>
+                    )}
+
+                    <button
+                      className="btn btn-sm"
+                      onClick={handleToggle}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        color: 'var(--color-danger)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        background: 'rgba(239, 68, 68, 0.05)',
+                        fontWeight: 700,
+                        padding: '6px 12px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <RiCloseLine size={16} />
+                      Stop
+                    </button>
+                  </div>
+
                   {currentActivity.notes && (
-                    <div style={{ marginTop: 12, color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
+                    <div style={{ marginTop: 16, color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
                       "{currentActivity.notes}"
                     </div>
                   )}

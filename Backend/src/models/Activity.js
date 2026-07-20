@@ -55,6 +55,18 @@ const activitySchema = new mongoose.Schema({
     type: Number,
     default: null, // null = ongoing
   },
+  isPaused: {
+    type: Boolean,
+    default: false,
+  },
+  pausedAt: {
+    type: Date,
+    default: null,
+  },
+  totalPausedDuration: {
+    type: Number,
+    default: 0,
+  },
   isProductive: {
     type: Boolean,
     default: false,
@@ -78,7 +90,8 @@ activitySchema.index({ group: 1, startTime: -1 });
 // Auto-compute duration when endTime is set
 activitySchema.pre('save', function (next) {
   if (this.endTime && this.startTime && !this.duration) {
-    this.duration = Math.floor((this.endTime - this.startTime) / 1000); // seconds
+    const pausedSec = this.totalPausedDuration || 0;
+    this.duration = Math.max(0, Math.floor((this.endTime - this.startTime) / 1000) - pausedSec);
   }
   // Set isProductive from category
   if (this.category && CATEGORIES[this.category]) {
