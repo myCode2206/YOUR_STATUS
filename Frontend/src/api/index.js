@@ -1,5 +1,5 @@
 import axios from 'axios';
-
+#hey
 export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8900';
 const API_BASE = `${BACKEND_URL}/api`;
 
@@ -86,6 +86,9 @@ export const usersAPI = {
   me: () => api.get('/users/me'),
   updateMe: (data) => api.put('/users/me', data),
   uploadAvatar: (data) => api.post('/users/me/avatar', data, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  uploadCover: (data) => api.post('/users/me/cover', data, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   myStats: () => api.get('/users/me/stats'),

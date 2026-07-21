@@ -25,6 +25,7 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
   const { currentActivity } = useActivityStore();
   const [collapsed, setCollapsed] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [toggleLoading, setToggleLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -74,13 +75,22 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
           
           <button 
             onClick={async () => {
+              if (toggleLoading) return;
               if (currentActivity) {
-                await useActivityStore.getState().stopActivity();
-                toast.success('Activity stopped. You are now idle.');
+                setToggleLoading(true);
+                try {
+                  await useActivityStore.getState().stopActivity();
+                  toast.success('Activity stopped. You are now idle.');
+                } catch (e) {
+                  toast.error('Failed to stop activity');
+                } finally {
+                  setToggleLoading(false);
+                }
               } else {
                 setShowPicker(true);
               }
             }}
+            disabled={toggleLoading}
             style={{
               width: collapsed ? 44 : 56,
               height: collapsed ? 24 : 28,
@@ -88,10 +98,11 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
               background: currentActivity ? (currentActivity.isPaused ? '#f59e0b' : 'var(--gradient-fire)') : 'var(--color-bg-elevated)',
               border: '1px solid var(--color-border-strong)',
               position: 'relative',
-              cursor: 'pointer',
+              cursor: toggleLoading ? 'not-allowed' : 'pointer',
               padding: 0,
               transition: 'all 0.3s ease',
-              boxShadow: currentActivity ? (currentActivity.isPaused ? '0 0 10px rgba(245, 158, 11, 0.4)' : 'var(--shadow-glow-primary)') : 'none'
+              boxShadow: currentActivity ? (currentActivity.isPaused ? '0 0 10px rgba(245, 158, 11, 0.4)' : 'var(--shadow-glow-primary)') : 'none',
+              opacity: toggleLoading ? 0.7 : 1
             }}
             title={collapsed ? (currentActivity ? 'Go Idle' : 'Start Studying') : undefined}
           >
@@ -110,7 +121,11 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
               fontSize: collapsed ? '0.65rem' : '0.75rem',
               boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
             }}>
-              {currentActivity ? (currentActivity.isPaused ? '⏸️' : '📚') : '💤'}
+              {toggleLoading ? (
+                <span className="animate-spin" style={{ display: 'inline-block', fontSize: collapsed ? '0.6rem' : '0.7rem', color: 'var(--color-primary)' }}>⏳</span>
+              ) : (
+                currentActivity ? (currentActivity.isPaused ? '⏸️' : '📚') : '💤'
+              )}
             </div>
           </button>
 

@@ -14,10 +14,74 @@ dayjs.extend(relativeTime);
 export default function Feed() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { currentGroup, feed, fetchFeed, addPost, updatePostLike, addComment, feedGroupId } = useGroupStore();
+  const { currentGroup, feed, fetchFeed, addPost, updatePostLike, addComment, feedGroupId, members } = useGroupStore();
   const [content, setContent] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
   const [mediaPreview, setMediaPreview] = useState(null);
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionTriggerIndex, setMentionTriggerIndex] = useState(-1);
+  const textareaRef = useRef(null);
+
+  const handleContentChange = (e) => {
+    const val = e.target.value;
+    setContent(val);
+
+    const selectionStart = e.target.selectionStart;
+    const textBeforeCursor = val.slice(0, selectionStart);
+    const lastWordMatch = textBeforeCursor.match(/@(\w*)$/);
+    if (lastWordMatch) {
+      const query = lastWordMatch[1];
+      setMentionQuery(query);
+      setMentionTriggerIndex(selectionStart - lastWordMatch[0].length);
+      setShowMentionSuggestions(true);
+    } else {
+      setShowMentionSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClick = (member) => {
+    const val = content;
+    const beforeMention = val.slice(0, mentionTriggerIndex);
+    const afterCursor = val.slice(mentionTriggerIndex + mentionQuery.length + 1);
+    const newContent = `${beforeMention}@${member.username} ${afterCursor}`;
+    setContent(newContent);
+    setShowMentionSuggestions(false);
+    
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      const newCursorPos = beforeMention.length + member.username.length + 2;
+      setTimeout(() => {
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+    }
+  };
+
+  const filteredSuggestions = members.filter(m => 
+    m.username.toLowerCase().includes(mentionQuery.toLowerCase()) ||
+    m.displayName.toLowerCase().includes(mentionQuery.toLowerCase())
+  );
+
+  const renderTaggedContent = (text) => {
+    if (!text) return '';
+    const parts = text.split(/(@[a-zA-Z0-9_]+)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('@')) {
+        return (
+          <span 
+            key={index} 
+            style={{ 
+              color: 'var(--color-primary-light)', 
+              fontWeight: 600, 
+            }}
+          >
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
   const [isPosting, setIsPosting] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   // Track which posts are awaiting comment submission
@@ -36,8 +100,29 @@ export default function Feed() {
         // Silent background update
         fetchFeed(currentGroup._id, true);
       }
+      // Load members for tagging suggestions
+      useGroupStore.getState().fetchMembers(currentGroup._id);
     }
   }, [currentGroup?._id, feedGroupId]);
+
+  const locationSearch = typeof window !== 'undefined' ? window.location.search : '';
+  useEffect(() => {
+    const queryParams = new URLSearchParams(locationSearch);
+    const targetPostId = queryParams.get('postId');
+    if (targetPostId && feed.length > 0) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`post-${targetPostId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('highlighted-post');
+          setTimeout(() => {
+            el.classList.remove('highlighted-post');
+          }, 3000);
+        }
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [locationSearch, feed]);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -158,13 +243,59 @@ export default function Feed() {
           <div style={{ display: 'flex', gap: 16 }}>
             <Avatar user={user} />
             <div style={{ flex: 1 }}>
-              <textarea
-                className="input"
-                placeholder="What's on your mind? Share your progress! 🔥"
-                value={content}
-                onChange={e => setContent(e.target.value)}
-                style={{ minHeight: 100, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, fontSize: '1.1rem', resize: 'none' }}
-              />
+              <div style={{ position: 'relative' }}>
+                <textarea
+                  ref={textareaRef}
+                  className="input"
+                  placeholder="What's on your mind? Share your progress! (Use @ to tag group members) 🔥"
+                  value={content}
+                  onChange={handleContentChange}
+                  style={{ minHeight: 100, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, fontSize: '1.1rem', resize: 'none', width: '100%' }}
+                />
+
+                {showMentionSuggestions && filteredSuggestions.length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    width: '100%',
+                    maxHeight: 200,
+                    overflowY: 'auto',
+                    background: 'var(--color-bg-card)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: 'var(--shadow-lg)',
+                    zIndex: 20,
+                    marginTop: 8
+                  }}>
+                    {filteredSuggestions.map((member) => (
+                      <div 
+                        key={member._id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '8px 12px',
+                          cursor: 'pointer',
+                          transition: 'background 0.2s',
+                          borderBottom: '1px solid rgba(255,255,255,0.05)'
+                        }}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleSuggestionClick(member);
+                        }}
+                        className="mention-suggestion-item"
+                      >
+                        <Avatar user={member} size="xs" />
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{member.displayName}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>@{member.username}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {mediaPreview && (
                 <div style={{ position: 'relative', marginBottom: 16 }}>
@@ -208,7 +339,7 @@ export default function Feed() {
               const commentText = commentInputs[post._id] || '';
 
               return (
-                <div key={post._id} className="feed-post">
+                <div key={post._id} id={`post-${post._id}`} className="feed-post">
                   <div className="post-header" style={{ cursor: 'pointer' }} onClick={() => navigate(`/profile/${post.author._id}`)}>
                     <Avatar user={post.author} />
                     <div>
@@ -226,7 +357,7 @@ export default function Feed() {
 
                   {post.content && (
                     <div className="post-content" style={{ fontSize: '1.05rem', whiteSpace: 'pre-wrap' }}>
-                      {post.content}
+                      {renderTaggedContent(post.content)}
                     </div>
                   )}
 
@@ -259,7 +390,7 @@ export default function Feed() {
                         <Avatar user={comment.user} size="sm" />
                         <div style={{ flex: 1, background: 'var(--color-bg-card)', padding: '8px 12px', borderRadius: 'var(--radius-lg)' }}>
                           <span style={{ fontWeight: 600, fontSize: '0.85rem', marginRight: 8 }}>{comment.user?.displayName}</span>
-                          <span style={{ fontSize: '0.9rem' }}>{comment.text}</span>
+                          <span style={{ fontSize: '0.9rem' }}>{renderTaggedContent(comment.text)}</span>
                         </div>
                       </div>
                     ))}

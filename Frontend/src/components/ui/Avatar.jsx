@@ -3,7 +3,7 @@ import { BACKEND_URL } from '../../api';
 import useAuthStore from '../../store/authStore';
 import useActivityStore from '../../store/activityStore';
 
-export default function Avatar({ user, size = 'md', className = '' }) {
+export default function Avatar({ user, size = 'md', className = '', ...props }) {
   const [imgError, setImgError] = useState(false);
   const { user: currentUser } = useAuthStore();
   const { currentActivity: activeActivity } = useActivityStore();
@@ -56,7 +56,7 @@ export default function Avatar({ user, size = 'md', className = '' }) {
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={wrapperClass}>
+    <div className={wrapperClass} {...props}>
       {user?.avatar && !imgError ? (
         <img
           src={

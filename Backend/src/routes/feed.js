@@ -3,6 +3,7 @@ const router = express.Router();
 const Post = require('../models/Post');
 const Group = require('../models/Group');
 const Notification = require('../models/Notification');
+const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 const { upload } = require('../middleware/upload');
 const { saveUploadedFile } = require('../utils/fileSaver');
@@ -61,19 +62,59 @@ router.post('/:groupId', protect, upload.single('media'), async (req, res) => {
       req.io.to(`group_${req.params.groupId}`).emit('new-post', { post });
     }
 
+    // Parse tags/mentions
+    const contentText = content || '';
+    const taggedUsernames = [...contentText.matchAll(/@([a-zA-Z0-9_]+)/g)].map(match => match[1]);
+
     // Notify group members
     const group = await Group.findById(req.params.groupId).select('members name');
     const otherMembers = group.members.filter(m => m.toString() !== req.user._id.toString());
 
-    await Notification.insertMany(otherMembers.map(memberId => ({
-      recipient: memberId,
-      sender: req.user._id,
-      type: 'new_post',
-      title: 'New post in your group',
-      message: `${req.user.displayName} posted in ${group.name}`,
-      group: req.params.groupId,
-      link: `/groups/${req.params.groupId}/feed`,
-    })));
+    // Find user IDs for matched usernames
+    let taggedUserIds = [];
+    if (taggedUsernames.length > 0) {
+      const taggedUsers = await User.find({ username: { $in: taggedUsernames } }).select('_id');
+      const taggedUserIdsSet = new Set(taggedUsers.map(u => u._id.toString()));
+      // Only keep users who are members of this group and are not the poster
+      taggedUserIds = otherMembers.filter(m => taggedUserIdsSet.has(m.toString()));
+    }
+
+    const notificationsToInsert = [];
+    otherMembers.forEach(memberId => {
+      const isTagged = taggedUserIds.some(tid => tid.toString() === memberId.toString());
+      if (isTagged) {
+        notificationsToInsert.push({
+          recipient: memberId,
+          sender: req.user._id,
+          type: 'mention',
+          title: 'You were tagged in a post',
+          message: `${req.user.displayName} tagged you in a post`,
+          group: req.params.groupId,
+          link: `/groups/${req.params.groupId}/feed?postId=${post._id}`,
+          metadata: { postId: post._id },
+        });
+      } else {
+        notificationsToInsert.push({
+          recipient: memberId,
+          sender: req.user._id,
+          type: 'new_post',
+          title: 'New post in your group',
+          message: `${req.user.displayName} posted in ${group.name}`,
+          group: req.params.groupId,
+          link: `/groups/${req.params.groupId}/feed?postId=${post._id}`,
+          metadata: { postId: post._id },
+        });
+      }
+    });
+
+    if (notificationsToInsert.length > 0) {
+      const createdNotifs = await Notification.insertMany(notificationsToInsert);
+      if (req.io) {
+        createdNotifs.forEach(notif => {
+          req.io.to(`user_${notif.recipient}`).emit('new-notification', { notification: notif });
+        });
+      }
+    }
 
     res.status(201).json({ success: true, post });
   } catch (error) {
@@ -127,14 +168,19 @@ router.post('/:groupId/posts/:postId/like', protect, async (req, res) => {
 
       // Notify post author
       if (post.author.toString() !== req.user._id.toString()) {
-        await Notification.create({
+        const notif = await Notification.create({
           recipient: post.author,
           sender: req.user._id,
           type: 'new_like',
           title: 'Someone liked your post',
           message: `${req.user.displayName} liked your post`,
           group: req.params.groupId,
+          link: `/groups/${req.params.groupId}/feed?postId=${post._id}`,
+          metadata: { postId: post._id },
         });
+        if (req.io) {
+          req.io.to(`user_${post.author}`).emit('new-notification', { notification: notif });
+        }
       }
     }
 
@@ -173,15 +219,55 @@ router.post('/:groupId/posts/:postId/comment', protect, async (req, res) => {
     const newComment = post.comments[post.comments.length - 1];
     await post.populate('comments.user', 'username displayName avatar');
 
-    if (post.author.toString() !== req.user._id.toString()) {
-      await Notification.create({
+    // Parse tags/mentions in comments
+    const taggedUsernames = [...text.matchAll(/@([a-zA-Z0-9_]+)/g)].map(match => match[1]);
+    let taggedUserIds = [];
+    if (taggedUsernames.length > 0) {
+      const group = await Group.findById(req.params.groupId).select('members');
+      const otherMembers = group.members.filter(m => m.toString() !== req.user._id.toString());
+      
+      const taggedUsers = await User.find({ username: { $in: taggedUsernames } }).select('_id');
+      const taggedUserIdsSet = new Set(taggedUsers.map(u => u._id.toString()));
+      taggedUserIds = otherMembers.filter(m => taggedUserIdsSet.has(m.toString()));
+
+      // Create mention notifications for tagged users
+      const mentionNotifications = taggedUserIds.map(memberId => ({
+        recipient: memberId,
+        sender: req.user._id,
+        type: 'mention',
+        title: 'You were tagged in a comment',
+        message: `${req.user.displayName} tagged you in a comment`,
+        group: req.params.groupId,
+        link: `/groups/${req.params.groupId}/feed?postId=${post._id}`,
+        metadata: { postId: post._id },
+      }));
+
+      if (mentionNotifications.length > 0) {
+        const createdNotifs = await Notification.insertMany(mentionNotifications);
+        if (req.io) {
+          createdNotifs.forEach(notif => {
+            req.io.to(`user_${notif.recipient}`).emit('new-notification', { notification: notif });
+          });
+        }
+      }
+    }
+
+    // Notify post author (if not already notified as a tagged user)
+    const authorNotified = taggedUserIds.some(tid => tid.toString() === post.author.toString());
+    if (post.author.toString() !== req.user._id.toString() && !authorNotified) {
+      const notif = await Notification.create({
         recipient: post.author,
         sender: req.user._id,
         type: 'new_comment',
         title: 'New comment on your post',
         message: `${req.user.displayName} commented: "${text.slice(0, 50)}"`,
         group: req.params.groupId,
+        link: `/groups/${req.params.groupId}/feed?postId=${post._id}`,
+        metadata: { postId: post._id },
       });
+      if (req.io) {
+        req.io.to(`user_${post.author}`).emit('new-notification', { notification: notif });
+      }
     }
 
     if (req.io) {

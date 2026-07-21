@@ -8,18 +8,35 @@ import { usersAPI } from '../../api';
 import Avatar from '../ui/Avatar';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import toast from 'react-hot-toast';
 dayjs.extend(relativeTime);
 
 export default function Navbar({ title, setMobileMenuOpen }) {
   const { user } = useAuthStore();
   const { currentActivity, elapsedSeconds } = useActivityStore();
+  const { currentGroup } = useGroupStore();
+  const navigate = useNavigate();
+
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifs, setShowNotifs] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     fetchNotifications();
+  }, []);
+
+  useEffect(() => {
+    const handleNewNotif = (e) => {
+      const notif = e.detail;
+      setNotifications(prev => [notif, ...prev]);
+      setUnreadCount(prev => prev + 1);
+      toast(notif.message, { icon: '🔔' });
+    };
+
+    window.addEventListener('new-notification', handleNewNotif);
+    return () => {
+      window.removeEventListener('new-notification', handleNewNotif);
+    };
   }, []);
 
   const fetchNotifications = async () => {
@@ -59,7 +76,7 @@ export default function Navbar({ title, setMobileMenuOpen }) {
         console.error('Failed to fetch group details:', err);
       }
       
-      if (['new_post', 'new_comment', 'new_like'].includes(notif.type)) {
+      if (['new_post', 'new_comment', 'new_like', 'mention'].includes(notif.type)) {
         navigate('/feed');
       } else {
         navigate('/group');

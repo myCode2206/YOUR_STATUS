@@ -25,6 +25,7 @@ const notificationSchema = new mongoose.Schema({
       'friend_joined',    // Friend joined the group
       'achievement',      // User unlocked achievement
       'streak_reminder',  // Streak at risk
+      'mention',          // User was mentioned/tagged
     ],
     required: true,
   },
