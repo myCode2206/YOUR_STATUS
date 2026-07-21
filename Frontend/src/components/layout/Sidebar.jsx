@@ -20,10 +20,9 @@ const navItems = [
   { to: '/profile', icon: RiUserFill, label: 'Profile' },
 ];
 
-export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
+export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen, collapsed, setCollapsed }) {
   const { user, logout } = useAuthStore();
   const { currentActivity } = useActivityStore();
-  const [collapsed, setCollapsed] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [toggleLoading, setToggleLoading] = useState(false);
   const navigate = useNavigate();
@@ -45,8 +44,8 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
 
       <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`} style={{ width: collapsed ? '68px' : 'var(--sidebar-width)' }}>
         {/* Header */}
-        <div className="sidebar-header" style={{ padding: collapsed ? '20px 18px' : undefined }}>
-          <div className="sidebar-logo">🔥</div>
+        <div className="sidebar-header" style={collapsed ? { padding: '16px 8px', flexDirection: 'column', gap: 10 } : undefined}>
+          <div className="sidebar-logo"><img src="/favicon.png" alt="YOUR STATUS" /></div>
           {!collapsed && (
             <div>
               <div className="sidebar-logo-text">YOUR STATUS</div>
@@ -54,7 +53,7 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
           )}
           <button
             className="btn btn-ghost btn-icon desktop-collapse-btn"
-            style={{ marginLeft: 'auto', flexShrink: 0 }}
+            style={{ marginLeft: collapsed ? 0 : 'auto', flexShrink: 0 }}
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? <RiMenuUnfold2Line size={16} /> : <RiMenuFold2Line size={16} />}

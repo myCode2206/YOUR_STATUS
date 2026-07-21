@@ -602,15 +602,21 @@ textarea.input {
 }
 
 .sidebar-logo {
-  width: 32px;
-  height: 32px;
-  background: var(--gradient-primary);
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1rem;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.sidebar-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .sidebar-logo-text {
@@ -725,6 +731,9 @@ textarea.input {
   gap: var(--space-4);
   transition: left var(--transition-normal);
 }
+
+.sidebar-collapsed .main-content { margin-left: 68px; }
+.sidebar-collapsed .navbar { left: 68px; }
 
 .navbar-title {
   font-size: 1.1rem;
@@ -1424,11 +1433,13 @@ textarea.input {
     transform: translateX(0);
   }
 
-  .main-content {
+  .main-content,
+  .sidebar-collapsed .main-content {
     margin-left: 0;
   }
 
-  .navbar {
+  .navbar,
+  .sidebar-collapsed .navbar {
     left: 0;
     padding: 0 var(--space-4);
   }

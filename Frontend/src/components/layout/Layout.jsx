@@ -23,6 +23,7 @@ export default function Layout({ children }) {
   const { currentGroup, fetchGroup, fetchMembers } = useGroupStore();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   useSocket(); // Initialize socket
 
   const title = pageTitles[location.pathname] || 'Your Status';
@@ -43,10 +44,12 @@ export default function Layout({ children }) {
   }, [location.pathname]);
 
   return (
-    <div className="app-shell">
-      <Sidebar 
-        mobileMenuOpen={mobileMenuOpen} 
-        setMobileMenuOpen={setMobileMenuOpen} 
+    <div className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
+      <Sidebar
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
       />
       <div className="main-content">
         <Navbar 
