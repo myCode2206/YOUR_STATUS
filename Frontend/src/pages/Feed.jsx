@@ -272,7 +272,7 @@ export default function Feed() {
                   placeholder="What's on your mind? Share your progress! (Use @ to tag) 🔥"
                   value={content}
                   onChange={handleContentChange}
-                  style={{ minHeight: 72, marginBottom: 10, border: 'none', background: 'transparent', padding: 0, fontSize: '0.95rem', resize: 'none', width: '100%' }}
+                  style={{ minHeight: 72, marginBottom: 10, border: 'none', background: 'transparent', padding: '4px 2px', fontSize: '0.95rem', lineHeight: 1.5, resize: 'none', width: '100%' }}
                 />
 
                 {showMentionSuggestions && filteredSuggestions.length > 0 && (
