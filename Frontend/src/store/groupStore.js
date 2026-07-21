@@ -4,6 +4,8 @@ import { groupsAPI, feedAPI, leaderboardAPI } from '../api';
 const useGroupStore = create((set, get) => ({
   currentGroup: null,
   members: [],
+  membersGroupId: null,
+  isMembersLoading: false,
   feed: [],
   feedPage: 1,
   feedHasMore: true,
@@ -27,6 +29,7 @@ const useGroupStore = create((set, get) => ({
         feedHasMore: true,
         feedGroupId: null,
         members: [],
+        membersGroupId: null,
         leaderboard: [],
         leaderboardMeta: null,
         leaderboardGroupId: null,
@@ -56,6 +59,7 @@ const useGroupStore = create((set, get) => ({
         feedHasMore: true,
         feedGroupId: null,
         members: [],
+        membersGroupId: null,
         leaderboard: [],
         leaderboardMeta: null,
         leaderboardGroupId: null,
@@ -69,9 +73,14 @@ const useGroupStore = create((set, get) => ({
   },
 
   fetchMembers: async (groupId) => {
-    const currentMembers = get().members;
-    const currentGroup = get().currentGroup;
-    if (currentMembers.length > 0 && currentGroup && currentGroup._id === groupId) {
+    const { members: currentMembers, membersGroupId, isMembersLoading } = get();
+
+    // Dedupe concurrent foreground loads for the same group.
+    if (isMembersLoading && membersGroupId === groupId) {
+      return currentMembers;
+    }
+
+    if (currentMembers.length > 0 && membersGroupId === groupId) {
       // Fetch in background silently
       groupsAPI.members(groupId).then(({ data }) => {
         set({ members: data.members });
@@ -79,12 +88,14 @@ const useGroupStore = create((set, get) => ({
       return currentMembers;
     }
 
+    set({ isMembersLoading: true, membersGroupId: groupId });
     try {
       const { data } = await groupsAPI.members(groupId);
-      set({ members: data.members });
+      set({ members: data.members, isMembersLoading: false });
       return data.members;
     } catch (err) {
       console.error('fetchMembers error:', err);
+      set({ isMembersLoading: false });
     }
   },
 
@@ -200,6 +211,8 @@ const useGroupStore = create((set, get) => ({
   reset: () => set({
     currentGroup: null,
     members: [],
+    membersGroupId: null,
+    isMembersLoading: false,
     feed: [],
     feedPage: 1,
     feedHasMore: true,

@@ -31,8 +31,9 @@ export default function Layout({ children }) {
   useEffect(() => {
     if (user?.groups?.length > 0 && !currentGroup) {
       const groupId = user.groups[0]._id || user.groups[0];
-      fetchGroup(groupId);
-      fetchMembers(groupId);
+      // Load group first, then members — running them in parallel races
+      // (fetchGroup resets members on success and can wipe a parallel fetchMembers).
+      fetchGroup(groupId).then(() => fetchMembers(groupId));
     }
   }, [user, currentGroup]);
 
