@@ -7,6 +7,7 @@ import Avatar from '../components/ui/Avatar';
 import Loader from '../components/ui/Loader';
 import Lightbox from '../components/ui/Lightbox';
 import CommentComposer from '../components/feed/CommentComposer';
+import Skeleton from '../components/ui/Skeleton';
 import toast from 'react-hot-toast';
 import { RiImageAddLine, RiSendPlane2Fill, RiHeart3Fill, RiHeart3Line, RiChat3Line, RiEmotionLine } from 'react-icons/ri';
 import EmojiPicker from '../components/ui/EmojiPicker';
@@ -76,7 +77,15 @@ export default function Feed() {
     const parts = text.split(/(@[a-zA-Z0-9_]+)/g);
     return parts.map((part, index) =>
       part.startsWith('@') ? (
-        <span key={index} style={{ color: 'var(--color-primary-light)', fontWeight: 600 }}>
+        <span 
+          key={index} 
+          style={{ color: 'var(--color-primary-light)', fontWeight: 600, cursor: 'pointer' }}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/profile/${part.substring(1)}`);
+          }}
+          title={`View ${part}'s profile`}
+        >
           {part}
         </span>
       ) : (
@@ -203,6 +212,10 @@ export default function Feed() {
     textareaRef.current?.focus();
   };
 
+  if (!currentGroup && user?.groups?.length > 0) {
+    return <Skeleton type="feed" />;
+  }
+
   if (!currentGroup) {
     return (
       <div className="page-container" style={{ textAlign: 'center', paddingTop: 60 }}>
@@ -324,7 +337,7 @@ export default function Feed() {
       {/* Feed List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {initialLoading ? (
-          <Loader text="Gathering group updates..." />
+          <Skeleton type="feed-posts" />
         ) : (
           <>
             {feed.map((post) => {

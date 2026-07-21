@@ -12,7 +12,10 @@ const { getDayAnalytics, getWeeklyAnalytics, computeStreak, computeXP, formatDur
 // @desc    Get public user profile
 router.get('/:id/profile', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.params.id)
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
+    const query = isObjectId ? { _id: req.params.id } : { username: req.params.id };
+
+    const user = await User.findOne(query)
       .select('-password')
       .populate('currentActivity', 'name emoji category startTime isPaused pausedAt totalPausedDuration')
       .populate('groups', 'name avatar');

@@ -250,6 +250,15 @@ router.get('/current', protect, async (req, res) => {
     }
 
     const now = new Date();
+
+    // Auto-stop on the fly if paused for > 30 minutes
+    if (activity.isPaused && (now - activity.pausedAt > 30 * 60 * 1000)) {
+      activity.endTime = activity.pausedAt;
+      activity.duration = Math.max(0, Math.floor((activity.endTime - activity.startTime) / 1000) - (activity.totalPausedDuration || 0));
+      await activity.save();
+      return res.json({ success: true, activity: null, elapsed: 0 });
+    }
+
     let elapsed = 0;
     if (activity.isPaused) {
       elapsed = Math.max(0, Math.floor((activity.pausedAt - activity.startTime) / 1000) - (activity.totalPausedDuration || 0));

@@ -9,6 +9,7 @@ import Modal from '../components/ui/Modal';
 import toast from 'react-hot-toast';
 import { RiAddLine, RiFileCopyLine, RiUserAddLine, RiTrophyLine, RiGroupLine, RiFireFill } from 'react-icons/ri';
 import Loader from '../components/ui/Loader';
+import Skeleton from '../components/ui/Skeleton';
 
 export default function GroupPage() {
   const { user, refreshUser } = useAuthStore();
@@ -22,6 +23,7 @@ export default function GroupPage() {
     leaderboardMeta,
     isLeaderboardLoading,
     fetchLeaderboard,
+    isLoading,
   } = useGroupStore();
   const { joinGroup } = useSocket();
   const [showCreate, setShowCreate] = useState(false);
@@ -117,6 +119,10 @@ export default function GroupPage() {
     return `${s}s`;
   };
 
+  if (!currentGroup && user?.groups?.length > 0) {
+    return <Skeleton type="group" />;
+  }
+
   if (!currentGroup && !user?.groups?.length) {
     return (
       <div className="page-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
@@ -159,7 +165,7 @@ export default function GroupPage() {
     );
   }
 
-  if (!currentGroup) return <div className="page-container">Loading group...</div>;
+  if (!currentGroup) return <Skeleton type="group" />;
 
   const onlineMembers = members.filter(m => m.isOnline).length;
 

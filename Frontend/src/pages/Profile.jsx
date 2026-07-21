@@ -4,6 +4,7 @@ import useAuthStore from '../store/authStore';
 import { usersAPI, activitiesAPI } from '../api';
 import Avatar from '../components/ui/Avatar';
 import Loader from '../components/ui/Loader';
+import Skeleton from '../components/ui/Skeleton';
 import HeatmapChart from '../components/charts/HeatmapChart';
 import TimelineView from '../components/charts/TimelineView';
 import toast from 'react-hot-toast';
@@ -153,7 +154,7 @@ export default function Profile() {
     }
   };
 
-  if (loading) return <div className="page-container"><Loader text="Loading profile..." /></div>;
+  if (loading) return <Skeleton type="profile" />;
   if (!profileUser) return <div className="page-container">User not found.</div>;
 
   return (

@@ -5,6 +5,7 @@ import WeeklyBarChart from '../components/charts/WeeklyBarChart';
 import TimelineView from '../components/charts/TimelineView';
 import HeatmapChart from '../components/charts/HeatmapChart';
 import Loader from '../components/ui/Loader';
+import Skeleton from '../components/ui/Skeleton';
 
 export default function Analytics() {
   const [stats, setStats] = useState(null);
@@ -53,7 +54,7 @@ export default function Analytics() {
     return `${s}s`;
   };
 
-  if (loading && !stats) return <div className="page-container"><Loader text="Crunching your stats..." /></div>;
+  if (loading && !stats) return <Skeleton type="analytics" />;
 
   if (error) return (
     <div className="page-container">

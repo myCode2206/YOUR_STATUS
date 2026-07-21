@@ -7,6 +7,7 @@ import ProgressRing from '../components/charts/ProgressRing';
 import WeeklyBarChart from '../components/charts/WeeklyBarChart';
 import StatusPicker from '../components/activity/StatusPicker';
 import Loader from '../components/ui/Loader';
+import Skeleton from '../components/ui/Skeleton';
 import toast from 'react-hot-toast';
 
 export default function Dashboard() {
@@ -72,6 +73,10 @@ export default function Dashboard() {
       setShowPicker(true);
     }
   };
+
+  if (statsLoading && !stats) {
+    return <Skeleton type="dashboard" />;
+  }
 
   return (
     <div className="page-container">

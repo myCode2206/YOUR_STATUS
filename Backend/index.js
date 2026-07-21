@@ -109,6 +109,30 @@ app.use((err, req, res, next) => {
     });
 });
 
+// Auto-stop activities paused for > 30 minutes
+const Activity = require('./src/models/Activity');
+setInterval(async () => {
+    try {
+        const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
+        const expired = await Activity.find({
+            endTime: null,
+            isPaused: true,
+            pausedAt: { $lt: thirtyMinsAgo }
+        });
+
+        for (const act of expired) {
+            act.endTime = act.pausedAt;
+            act.duration = Math.max(0, Math.floor((act.endTime - act.startTime) / 1000) - (act.totalPausedDuration || 0));
+            await act.save();
+        }
+        if (expired.length > 0) {
+            console.log(`🕐 Auto-stopped ${expired.length} activities (paused > 30m).`);
+        }
+    } catch (err) {
+        console.error('Auto-stop cron error:', err);
+    }
+}, 5 * 60 * 1000); // Every 5 mins
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
     console.log(`🚀 Your Status API running on http://localhost:${PORT}`);

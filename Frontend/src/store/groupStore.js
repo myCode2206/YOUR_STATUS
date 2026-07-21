@@ -182,9 +182,14 @@ const useGroupStore = create((set, get) => ({
 
   addComment: (postId, comment) => {
     set((state) => ({
-      feed: state.feed.map((p) =>
-        p._id === postId ? { ...p, comments: [...(p.comments || []), comment] } : p
-      ),
+      feed: state.feed.map((p) => {
+        if (p._id === postId) {
+          const exists = p.comments?.some(c => c._id === comment._id);
+          if (exists) return p;
+          return { ...p, comments: [...(p.comments || []), comment] };
+        }
+        return p;
+      }),
     }));
   },
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { BACKEND_URL } from '../api';
 import useAuthStore from '../store/authStore';
@@ -6,6 +6,7 @@ import useActivityStore from '../store/activityStore';
 import useGroupStore from '../store/groupStore';
 
 let socket = null;
+let isInitialized = false;
 
 export const getSocket = () => socket;
 
@@ -13,12 +14,11 @@ export const useSocket = () => {
   const { user, isAuthenticated } = useAuthStore();
   const { setCurrentActivityFromSocket } = useActivityStore();
   const { updateMemberActivity, addMember, addPost, updatePostLike, addComment, removePost } = useGroupStore();
-  const initialized = useRef(false);
 
   useEffect(() => {
-    if (!isAuthenticated || !user || initialized.current) return;
-    initialized.current = true;
-
+    if (!isAuthenticated || !user || isInitialized) return;
+    
+    isInitialized = true;
     socket = io(BACKEND_URL, {
       transports: ['websocket'],
       reconnection: true,
@@ -46,12 +46,12 @@ export const useSocket = () => {
 
     // Real-time activity updates from group members
     socket.on('member-activity-updated', ({ userId, activity }) => {
-      updateMemberActivity(userId, activity);
+      useGroupStore.getState().updateMemberActivity(userId, activity);
     });
 
     // Real-time member join events
     socket.on('member-joined', ({ user }) => {
-      addMember(user);
+      useGroupStore.getState().addMember(user);
     });
 
     // Real-time notifications
@@ -61,34 +61,36 @@ export const useSocket = () => {
 
     // Current activity response (on reconnect)
     socket.on('current-activity', ({ activity, elapsed }) => {
-      setCurrentActivityFromSocket(activity, elapsed);
+      useActivityStore.getState().setCurrentActivityFromSocket(activity, elapsed);
     });
 
     // Feed events
     socket.on('new-post', ({ post }) => {
-      addPost(post);
+      useGroupStore.getState().addPost(post);
     });
 
     socket.on('post-liked', ({ postId, likesCount, liked, userId }) => {
-      updatePostLike(postId, liked, likesCount, userId);
+      useGroupStore.getState().updatePostLike(postId, liked, likesCount, userId);
     });
 
     socket.on('new-comment', ({ postId, comment }) => {
-      addComment(postId, comment);
+      useGroupStore.getState().addComment(postId, comment);
     });
 
     socket.on('post-deleted', ({ postId }) => {
-      removePost(postId);
+      useGroupStore.getState().removePost(postId);
     });
 
     // Ping every 30s
     const pingInterval = setInterval(() => {
-      if (socket.connected) socket.emit('ping');
+      if (socket && socket.connected) socket.emit('ping');
     }, 30000);
 
     return () => {
+      // We don't want to disconnect on component unmount if it's used globally by Layout
+      // But if we ever unmount Layout, we clean up
       clearInterval(pingInterval);
-      initialized.current = false;
+      isInitialized = false;
       if (socket) {
         socket.disconnect();
         socket = null;
