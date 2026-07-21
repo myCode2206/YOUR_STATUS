@@ -12,7 +12,7 @@ export const getSocket = () => socket;
 export const useSocket = () => {
   const { user, isAuthenticated } = useAuthStore();
   const { setCurrentActivityFromSocket } = useActivityStore();
-  const { updateMemberActivity, addPost, updatePostLike, addComment, removePost } = useGroupStore();
+  const { updateMemberActivity, addMember, addPost, updatePostLike, addComment, removePost } = useGroupStore();
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -47,6 +47,16 @@ export const useSocket = () => {
     // Real-time activity updates from group members
     socket.on('member-activity-updated', ({ userId, activity }) => {
       updateMemberActivity(userId, activity);
+    });
+
+    // Real-time member join events
+    socket.on('member-joined', ({ user }) => {
+      addMember(user);
+    });
+
+    // Real-time notifications
+    socket.on('new-notification', ({ notification }) => {
+      window.dispatchEvent(new CustomEvent('new-notification', { detail: notification }));
     });
 
     // Current activity response (on reconnect)

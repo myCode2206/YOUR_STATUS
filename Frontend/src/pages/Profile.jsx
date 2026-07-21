@@ -19,7 +19,11 @@ export default function Profile() {
   // Analytics states
   const [heatmapData, setHeatmapData] = useState([]);
   const [timelineData, setTimelineData] = useState([]);
-  const [timelineDate, setTimelineDate] = useState(new Date().toISOString().split('T')[0]);
+  const getLocalDateString = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const [timelineDate, setTimelineDate] = useState(getLocalDateString());
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -29,7 +33,9 @@ export default function Profile() {
     studyGoal: 8,
   });
   const [isUploading, setIsUploading] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
   const fileInputRef = useRef();
+  const coverInputRef = useRef();
 
   const isMe = !userId || userId === currentUser?._id;
 
@@ -113,11 +119,37 @@ export default function Profile() {
       
       const { data } = await usersAPI.uploadAvatar(uploadData);
       updateUser(data.user);
+      setProfileUser(data.user);
       toast.success('Avatar updated!');
     } catch (err) {
       toast.error('Failed to upload avatar');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleCoverUpload = async (e) => {
+    if (!isMe) return;
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      return toast.error('Please select an image file');
+    }
+
+    setCoverUploading(true);
+    try {
+      const uploadData = new FormData();
+      uploadData.append('cover', file);
+      
+      const { data } = await usersAPI.uploadCover(uploadData);
+      updateUser(data.user);
+      setProfileUser(data.user);
+      toast.success('Cover photo updated!');
+    } catch (err) {
+      toast.error('Failed to upload cover photo');
+    } finally {
+      setCoverUploading(false);
     }
   };
 
@@ -128,16 +160,52 @@ export default function Profile() {
     <div className="page-container" style={{ maxWidth: 800 }}>
       {/* Header Profile Card */}
       <div className="card mb-6" style={{ position: 'relative', padding: 0, overflow: 'hidden' }}>
-        <div style={{ height: 120, background: 'var(--gradient-fire)' }} />
+        <div style={{
+          height: 140,
+          background: profileUser?.coverPhoto ? `url(${profileUser.coverPhoto}) center/cover no-repeat` : 'var(--gradient-fire)',
+          position: 'relative'
+        }}>
+          {isMe && (
+            <>
+              <button 
+                className="btn btn-icon" 
+                style={{
+                  position: 'absolute',
+                  top: 12,
+                  right: 12,
+                  borderRadius: '50%',
+                  width: 36,
+                  height: 36,
+                  padding: 0,
+                  background: 'rgba(0,0,0,0.5)',
+                  color: 'white',
+                  border: 'none',
+                  backdropFilter: 'blur(4px)',
+                  zIndex: 5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+                onClick={() => coverInputRef.current.click()}
+                disabled={coverUploading}
+                title="Update cover photo"
+              >
+                {coverUploading ? '⏳' : <RiCameraLine size={18} />}
+              </button>
+              <input type="file" ref={coverInputRef} onChange={handleCoverUpload} accept="image/*" style={{ display: 'none' }} />
+            </>
+          )}
+        </div>
         
         <div className="profile-header-content">
           <div style={{ position: 'relative' }}>
-            <Avatar user={profileUser} size="2xl" className="profile-avatar" style={{ border: '4px solid var(--color-bg-card)' }} />
+            <Avatar user={profileUser} size="2xl" className="profile-avatar" />
             {isMe && (
               <>
                 <button 
                   className="btn btn-primary btn-icon" 
-                  style={{ position: 'absolute', bottom: 0, right: 0, borderRadius: '50%', width: 32, height: 32, padding: 0 }}
+                  style={{ position: 'absolute', bottom: 0, left: 0, borderRadius: '50%', width: 32, height: 32, padding: 0, zIndex: 3 }}
                   onClick={() => fileInputRef.current.click()}
                   disabled={isUploading}
                 >
@@ -254,7 +322,7 @@ export default function Profile() {
               type="date" 
               value={timelineDate} 
               onChange={e => setTimelineDate(e.target.value)} 
-              max={new Date().toISOString().split('T')[0]}
+              max={getLocalDateString()}
               style={{
                 background: 'transparent',
                 border: 'none',

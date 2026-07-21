@@ -96,6 +96,23 @@ const useGroupStore = create((set, get) => ({
     }));
   },
 
+  addMember: (member) => {
+    set((state) => {
+      const exists = state.members.some(m => m._id === member._id);
+      if (exists) return state;
+
+      const newMembers = [...state.members, member];
+      const newCurrentGroup = state.currentGroup 
+        ? { ...state.currentGroup, members: [...(state.currentGroup.members || []), member._id] } 
+        : null;
+
+      return { 
+        members: newMembers,
+        currentGroup: newCurrentGroup
+      };
+    });
+  },
+
   fetchFeed: async (groupId, reset = false) => {
     const page = reset ? 1 : get().feedPage;
     try {

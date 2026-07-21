@@ -88,6 +88,9 @@ export const usersAPI = {
   uploadAvatar: (data) => api.post('/users/me/avatar', data, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  uploadCover: (data) => api.post('/users/me/cover', data, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
   myStats: () => api.get('/users/me/stats'),
   notifications: () => api.get('/users/me/notifications'),
   markNotificationsRead: () => api.put('/users/me/notifications/read'),

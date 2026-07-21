@@ -11,7 +11,11 @@ export default function Analytics() {
   const [timeline, setTimeline] = useState([]);
   const [heatmap, setHeatmap] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [timelineDate, setTimelineDate] = useState(new Date().toISOString().split('T')[0]);
+  const getLocalDateString = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const [timelineDate, setTimelineDate] = useState(getLocalDateString());
 
   useEffect(() => {
     fetchData();
@@ -111,7 +115,7 @@ export default function Analytics() {
               style={{ width: 'auto', padding: '4px 12px' }}
               value={timelineDate}
               onChange={e => setTimelineDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
+              max={getLocalDateString()}
             />
           </div>
           <TimelineView activities={timeline} date={timelineDate} />

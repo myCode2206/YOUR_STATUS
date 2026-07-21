@@ -3,13 +3,25 @@ const Activity = require('../models/Activity');
 const { CATEGORIES } = require('../models/Activity');
 
 /**
- * Get the start and end of a given date (UTC midnight to midnight)
+ * Get YYYY-MM-DD date string in Indian Standard Time (IST)
+ */
+function getISTDateString(date = new Date()) {
+  const f = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return f.format(date);
+}
+
+/**
+ * Get the start and end of a given date (IST midnight to midnight represented as UTC Dates)
  */
 function getDayBounds(date = new Date()) {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(date);
-  end.setHours(23, 59, 59, 999);
+  const dateStr = getISTDateString(date);
+  const start = new Date(dateStr + 'T00:00:00.000+05:30');
+  const end = new Date(dateStr + 'T23:59:59.999+05:30');
   return { start, end };
 }
 
@@ -93,14 +105,11 @@ async function getDayAnalytics(userId, date = new Date()) {
 async function getWeeklyAnalytics(userId) {
   const userObjId = typeof userId === 'string' ? new mongoose.Types.ObjectId(userId) : userId;
 
-  // Build the 7-day date range
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 6);
-  weekAgo.setHours(0, 0, 0, 0);
+  // Build the 7-day date range in IST
+  const { start: weekAgo } = getDayBounds(new Date(Date.now() - 6 * 86400000));
+  const { end: today } = getDayBounds(new Date());
 
-  // One aggregate for all 7 days grouped by date string
+  // One aggregate for all 7 days grouped by date string in IST
   const agg = await Activity.aggregate([
     {
       $match: {
@@ -112,7 +121,7 @@ async function getWeeklyAnalytics(userId) {
     {
       $group: {
         _id: {
-          $dateToString: { format: '%Y-%m-%d', date: '$startTime' },
+          $dateToString: { format: '%Y-%m-%d', date: '$startTime', timezone: 'Asia/Kolkata' },
         },
         totalSeconds: { $sum: '$duration' },
         studySeconds: {
@@ -134,17 +143,18 @@ async function getWeeklyAnalytics(userId) {
   const dataMap = {};
   agg.forEach(d => { dataMap[d._id] = d; });
 
-  // Build 7-day array (filling in zeros for missing days)
+  // Build 7-day array (filling in zeros for missing days) in IST
+  const todayStr = getISTDateString(new Date());
   const days = [];
   for (let i = 6; i >= 0; i--) {
-    const date = new Date();
+    const date = new Date(todayStr + 'T12:00:00.000+05:30');
     date.setDate(date.getDate() - i);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getISTDateString(date);
     const d = dataMap[dateStr] || { totalSeconds: 0, studySeconds: 0, productiveSeconds: 0, sessions: 0 };
 
     days.push({
-      date: new Date(dateStr),
-      dayLabel: date.toLocaleDateString('en-US', { weekday: 'short' }),
+      date: new Date(dateStr + 'T00:00:00.000+05:30'),
+      dayLabel: date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'Asia/Kolkata' }),
       dateStr,
       studySeconds: d.studySeconds,
       productiveSeconds: d.productiveSeconds,
@@ -166,11 +176,9 @@ async function getWeeklyAnalytics(userId) {
 async function getMonthlyAnalytics(userId) {
   const userObjId = typeof userId === 'string' ? new mongoose.Types.ObjectId(userId) : userId;
 
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  const monthAgo = new Date();
-  monthAgo.setDate(monthAgo.getDate() - 29);
-  monthAgo.setHours(0, 0, 0, 0);
+  // Build the 30-day date range in IST
+  const { start: monthAgo } = getDayBounds(new Date(Date.now() - 29 * 86400000));
+  const { end: today } = getDayBounds(new Date());
 
   const agg = await Activity.aggregate([
     {
@@ -182,7 +190,7 @@ async function getMonthlyAnalytics(userId) {
     },
     {
       $group: {
-        _id: { $dateToString: { format: '%Y-%m-%d', date: '$startTime' } },
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$startTime', timezone: 'Asia/Kolkata' } },
         studySeconds: {
           $sum: {
             $cond: [{ $in: ['$category', ['study', 'coding', 'reading']] }, '$duration', 0],
@@ -200,13 +208,14 @@ async function getMonthlyAnalytics(userId) {
   const dataMap = {};
   agg.forEach(d => { dataMap[d._id] = d; });
 
+  const todayStr = getISTDateString(new Date());
   const days = [];
   for (let i = 29; i >= 0; i--) {
-    const date = new Date();
+    const date = new Date(todayStr + 'T12:00:00.000+05:30');
     date.setDate(date.getDate() - i);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getISTDateString(date);
     const d = dataMap[dateStr] || { studySeconds: 0, productiveSeconds: 0 };
-    days.push({ date: new Date(dateStr), dateStr, studySeconds: d.studySeconds, productiveSeconds: d.productiveSeconds });
+    days.push({ date: new Date(dateStr + 'T00:00:00.000+05:30'), dateStr, studySeconds: d.studySeconds, productiveSeconds: d.productiveSeconds });
   }
 
   const totalStudySeconds = days.reduce((sum, d) => sum + d.studySeconds, 0);
@@ -230,12 +239,12 @@ async function computeStreak(userId) {
         user: userObjId,
         category: { $in: ['study', 'coding', 'reading'] },
         endTime: { $ne: null },
-        duration: { $gt: 0 },
+        duration: { $gte: 60 },
       },
     },
     {
       $group: {
-        _id: { $dateToString: { format: '%Y-%m-%d', date: '$startTime' } },
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$startTime', timezone: 'Asia/Kolkata' } },
         totalSeconds: { $sum: '$duration' },
       },
     },
@@ -246,16 +255,17 @@ async function computeStreak(userId) {
   if (agg.length === 0) return { streak: 0, longestStreak: 0 };
 
   const activeDays = new Set(agg.map(d => d._id));
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const today = getISTDateString(new Date());
+  const yesterdayDate = new Date(new Date(today + 'T12:00:00.000+05:30').getTime() - 86400000);
+  const yesterday = getISTDateString(yesterdayDate);
 
   // Current streak: walk backwards from today
   let streak = 0;
   let checkDate = activeDays.has(today) ? today : (activeDays.has(yesterday) ? yesterday : null);
   if (checkDate) {
-    const d = new Date(checkDate);
+    const d = new Date(checkDate + 'T12:00:00.000+05:30');
     while (true) {
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = getISTDateString(d);
       if (activeDays.has(dateStr)) {
         streak++;
         d.setDate(d.getDate() - 1);
@@ -301,9 +311,7 @@ function computeXP(studySeconds, productive, streak) {
 async function getHeatmapData(userId) {
   const userObjId = typeof userId === 'string' ? new mongoose.Types.ObjectId(userId) : userId;
 
-  const ninetyDaysAgo = new Date();
-  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 89);
-  ninetyDaysAgo.setHours(0, 0, 0, 0);
+  const { start: ninetyDaysAgo } = getDayBounds(new Date(Date.now() - 89 * 86400000));
 
   const agg = await Activity.aggregate([
     {
@@ -316,7 +324,7 @@ async function getHeatmapData(userId) {
     },
     {
       $group: {
-        _id: { $dateToString: { format: '%Y-%m-%d', date: '$startTime' } },
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$startTime', timezone: 'Asia/Kolkata' } },
         seconds: { $sum: '$duration' },
       },
     },
@@ -325,11 +333,12 @@ async function getHeatmapData(userId) {
   const dataMap = {};
   agg.forEach(d => { dataMap[d._id] = d.seconds; });
 
+  const todayStr = getISTDateString(new Date());
   const result = [];
   for (let i = 89; i >= 0; i--) {
-    const date = new Date();
+    const date = new Date(todayStr + 'T12:00:00.000+05:30');
     date.setDate(date.getDate() - i);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getISTDateString(date);
     const seconds = dataMap[dateStr] || 0;
     result.push({
       date: dateStr,

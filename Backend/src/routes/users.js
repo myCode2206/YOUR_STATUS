@@ -104,6 +104,35 @@ router.post('/me/avatar', protect, uploadAvatar.single('avatar'), async (req, re
   }
 });
 
+// @route   POST /api/users/me/cover
+// @desc    Upload cover photo — resized to 800x240 JPEG, stored as base64 data URI in MongoDB
+router.post('/me/cover', protect, uploadAvatar.single('cover'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+
+    const sharp = require('sharp');
+
+    // Resize to 800x240, convert to JPEG at 80% quality (~25-35 KB)
+    const compressedBuffer = await sharp(req.file.buffer)
+      .resize(800, 240, { fit: 'cover', position: 'center' })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    const dataUri = `data:image/jpeg;base64,${compressedBuffer.toString('base64')}`;
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { coverPhoto: dataUri },
+      { new: true }
+    ).select('-password');
+
+    res.json({ success: true, coverPhoto: dataUri, user });
+  } catch (error) {
+    console.error('Cover photo upload error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 
 // @route   GET /api/users/me/stats
 // @desc    Get full stats for current user

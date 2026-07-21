@@ -30,7 +30,10 @@ export default function WeeklyBarChart({ days = [] }) {
   const data = days.map((d) => ({
     day: d.dayLabel,
     minutes: Math.floor(d.studySeconds / 60),
-    isToday: d.dateStr === new Date().toISOString().split('T')[0],
+    isToday: d.dateStr === (() => {
+      const today = new Date();
+      return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    })(),
   }));
 
   return (

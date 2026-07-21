@@ -510,6 +510,10 @@ textarea.input {
   border: 2px solid var(--color-bg-surface);
 }
 
+.profile-avatar .avatar {
+  border: 4px solid var(--color-bg-card) !important;
+}
+
 .status-dot {
   position: absolute;
   border-radius: 50%;
@@ -1505,3 +1509,30 @@ textarea.input {
 .opacity-0 { opacity: 0; }
 .border-top { border-top: 1px solid var(--color-border); }
 .divider { height: 1px; background: var(--color-border); margin: var(--space-4) 0; }
+
+/* Mention Suggestions Hover */
+.mention-suggestion-item:hover {
+  background: rgba(245, 158, 11, 0.08) !important;
+}
+
+/* Post Target Highlight Pulse Glow */
+@keyframes post-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+    border-color: var(--color-primary);
+  }
+  50% {
+    box-shadow: 0 0 20px 4px rgba(245, 158, 11, 0.6);
+    border-color: var(--color-primary-light);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+    border-color: var(--color-border);
+  }
+}
+
+.feed-post.highlighted-post {
+  animation: post-glow 2s ease-in-out;
+  border: 1px solid var(--color-primary-light);
+  border-radius: var(--radius-lg);
+}
