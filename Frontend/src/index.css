@@ -987,6 +987,14 @@ textarea.input {
   color: #f43f5e;
 }
 
+.emoji-btn:hover {
+  background: var(--color-bg-hover) !important;
+}
+
+.comment-input::placeholder {
+  color: var(--color-text-muted);
+}
+
 /* ============================================
    TIMELINE
    ============================================ */

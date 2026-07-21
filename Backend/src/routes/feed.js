@@ -203,17 +203,25 @@ router.post('/:groupId/posts/:postId/like', protect, async (req, res) => {
 
 // @route   POST /api/feed/:groupId/posts/:postId/comment
 // @desc    Add a comment
-router.post('/:groupId/posts/:postId/comment', protect, async (req, res) => {
+router.post('/:groupId/posts/:postId/comment', protect, upload.single('media'), async (req, res) => {
   try {
     await checkMembership(req.params.groupId, req.user._id);
 
-    const { text } = req.body;
-    if (!text) return res.status(400).json({ success: false, message: 'Comment text required' });
+    const text = req.body.text || '';
+    if (!text.trim() && !req.file) {
+      return res.status(400).json({ success: false, message: 'Comment must have text or media' });
+    }
 
     const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
-    post.comments.push({ user: req.user._id, text });
+    const commentData = { user: req.user._id, text };
+    if (req.file) {
+      commentData.mediaUrl = await saveUploadedFile(req.file, 'comments');
+      commentData.mediaType = getMediaType(req.file.mimetype);
+    }
+
+    post.comments.push(commentData);
     await post.save();
 
     const newComment = post.comments[post.comments.length - 1];

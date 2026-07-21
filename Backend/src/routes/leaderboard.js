@@ -24,6 +24,17 @@ async function getMemberStats(userId, period = 'daily') {
     category: { $in: ['study', 'coding', 'reading'] },
   });
 
+  // Compute productive seconds for an active (ongoing) activity,
+  // correctly subtracting accumulated paused time + current in-progress pause.
+  function getActiveSeconds(effectiveStart) {
+    if (!activeActivity || effectiveStart >= now) return 0;
+    const alreadyPaused = activeActivity.totalPausedDuration || 0;
+    const currentPausedSec = (activeActivity.isPaused && activeActivity.pausedAt)
+      ? Math.max(0, Math.floor((now - new Date(activeActivity.pausedAt)) / 1000))
+      : 0;
+    return Math.max(0, Math.floor((now - effectiveStart) / 1000) - alreadyPaused - currentPausedSec);
+  }
+
   if (period === 'daily') {
     const { start, end } = getDayBounds(now);
     const result = await Activity.aggregate([
@@ -42,10 +53,8 @@ async function getMemberStats(userId, period = 'daily') {
     let activeSessionCount = 0;
     if (activeActivity) {
       const effectiveStart = activeActivity.startTime < start ? start : activeActivity.startTime;
-      if (effectiveStart < now) {
-        activeSeconds = Math.floor((now - effectiveStart) / 1000);
-        activeSessionCount = 1;
-      }
+      activeSeconds = getActiveSeconds(effectiveStart);
+      if (activeSeconds > 0) activeSessionCount = 1;
     }
 
     return {
@@ -77,10 +86,8 @@ async function getMemberStats(userId, period = 'daily') {
     let activeSessionCount = 0;
     if (activeActivity) {
       const effectiveStart = activeActivity.startTime < startOfWeek ? startOfWeek : activeActivity.startTime;
-      if (effectiveStart < now) {
-        activeSeconds = Math.floor((now - effectiveStart) / 1000);
-        activeSessionCount = 1;
-      }
+      activeSeconds = getActiveSeconds(effectiveStart);
+      if (activeSeconds > 0) activeSessionCount = 1;
     }
 
     return {
@@ -110,10 +117,8 @@ async function getMemberStats(userId, period = 'daily') {
     let activeSessionCount = 0;
     if (activeActivity) {
       const effectiveStart = activeActivity.startTime < monthAgo ? monthAgo : activeActivity.startTime;
-      if (effectiveStart < now) {
-        activeSeconds = Math.floor((now - effectiveStart) / 1000);
-        activeSessionCount = 1;
-      }
+      activeSeconds = getActiveSeconds(effectiveStart);
+      if (activeSeconds > 0) activeSessionCount = 1;
     }
 
     return {
@@ -137,8 +142,8 @@ async function getMemberStats(userId, period = 'daily') {
     let activeSeconds = 0;
     let activeSessionCount = 0;
     if (activeActivity) {
-      activeSeconds = Math.floor((now - activeActivity.startTime) / 1000);
-      activeSessionCount = 1;
+      activeSeconds = getActiveSeconds(activeActivity.startTime);
+      if (activeSeconds > 0) activeSessionCount = 1;
     }
 
     return {
@@ -174,10 +179,15 @@ router.get('/:groupId', protect, async (req, res) => {
         const stats = await getMemberStats(member._id, period);
         const memberObj = member.toJSON();
 
-        // Add elapsed time to current activity if ongoing
+        // Add elapsed time to current activity if ongoing — subtract paused duration
         if (memberObj.currentActivity?.startTime) {
-          memberObj.currentActivity.elapsed = Math.floor(
-            (now - new Date(memberObj.currentActivity.startTime)) / 1000
+          const alreadyPaused = memberObj.currentActivity.totalPausedDuration || 0;
+          const currentPausedSec = (memberObj.currentActivity.isPaused && memberObj.currentActivity.pausedAt)
+            ? Math.max(0, Math.floor((now - new Date(memberObj.currentActivity.pausedAt)) / 1000))
+            : 0;
+          memberObj.currentActivity.elapsed = Math.max(
+            0,
+            Math.floor((now - new Date(memberObj.currentActivity.startTime)) / 1000) - alreadyPaused - currentPausedSec
           );
         }
 

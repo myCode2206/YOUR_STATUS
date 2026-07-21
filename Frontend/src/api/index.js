@@ -72,7 +72,15 @@ export const feedAPI = {
   }),
   get: (groupId, params) => api.get(`/feed/${groupId}`, { params }),
   like: (groupId, postId) => api.post(`/feed/${groupId}/posts/${postId}/like`),
-  comment: (groupId, postId, text) => api.post(`/feed/${groupId}/posts/${postId}/comment`, { text }),
+  comment: (groupId, postId, payload) => {
+    // payload can be a plain string (text only) or FormData (text + media)
+    if (payload instanceof FormData) {
+      return api.post(`/feed/${groupId}/posts/${postId}/comment`, payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.post(`/feed/${groupId}/posts/${postId}/comment`, { text: payload });
+  },
   delete: (groupId, postId) => api.delete(`/feed/${groupId}/posts/${postId}`),
 };
 
