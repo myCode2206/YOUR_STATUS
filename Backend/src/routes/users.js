@@ -5,7 +5,7 @@ const Activity = require('../models/Activity');
 const Notification = require('../models/Notification');
 const { protect } = require('../middleware/auth');
 const { uploadAvatar } = require('../middleware/upload');
-const { saveUploadedFile } = require('../utils/fileSaver');
+const { uploadToCloudinary } = require('../config/cloudinary');
 const { getDayAnalytics, getWeeklyAnalytics, computeStreak, computeXP, formatDuration } = require('../utils/analytics');
 
 // @route   GET /api/users/:id/profile
@@ -74,30 +74,28 @@ router.put('/me', protect, async (req, res) => {
 });
 
 // @route   POST /api/users/me/avatar
-// @desc    Upload avatar — resized to 200x200 JPEG, stored as base64 data URI in MongoDB
-//          This bypasses Firebase Storage / local disk entirely and works on Vercel.
+// @desc    Upload avatar — resized to 200x200 JPEG, stored on Cloudinary
 router.post('/me/avatar', protect, uploadAvatar.single('avatar'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
 
     const sharp = require('sharp');
 
-    // Resize to 200×200, convert to JPEG at 80% quality (~15–20 KB)
+    // Resize to 200×200, convert to JPEG at 80% quality
     const compressedBuffer = await sharp(req.file.buffer)
       .resize(200, 200, { fit: 'cover', position: 'center' })
       .jpeg({ quality: 80 })
       .toBuffer();
 
-    // Encode as data URI so it can be embedded directly in <img src>
-    const dataUri = `data:image/jpeg;base64,${compressedBuffer.toString('base64')}`;
+    const avatarUrl = await uploadToCloudinary(compressedBuffer, 'avatars', 'image/jpeg');
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { avatar: dataUri },
+      { avatar: avatarUrl },
       { new: true }
     ).select('-password');
 
-    res.json({ success: true, avatar: dataUri, user });
+    res.json({ success: true, avatar: avatarUrl, user });
   } catch (error) {
     console.error('Avatar upload error:', error);
     res.status(500).json({ success: false, message: error.message });
@@ -105,28 +103,28 @@ router.post('/me/avatar', protect, uploadAvatar.single('avatar'), async (req, re
 });
 
 // @route   POST /api/users/me/cover
-// @desc    Upload cover photo — resized to 800x240 JPEG, stored as base64 data URI in MongoDB
+// @desc    Upload cover photo — resized to 800x240 JPEG, stored on Cloudinary
 router.post('/me/cover', protect, uploadAvatar.single('cover'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
 
     const sharp = require('sharp');
 
-    // Resize to 800x240, convert to JPEG at 80% quality (~25-35 KB)
+    // Resize to 800x240, convert to JPEG at 80% quality
     const compressedBuffer = await sharp(req.file.buffer)
       .resize(800, 240, { fit: 'cover', position: 'center' })
       .jpeg({ quality: 80 })
       .toBuffer();
 
-    const dataUri = `data:image/jpeg;base64,${compressedBuffer.toString('base64')}`;
+    const coverUrl = await uploadToCloudinary(compressedBuffer, 'banners', 'image/jpeg');
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { coverPhoto: dataUri },
+      { coverPhoto: coverUrl },
       { new: true }
     ).select('-password');
 
-    res.json({ success: true, coverPhoto: dataUri, user });
+    res.json({ success: true, coverPhoto: coverUrl, user });
   } catch (error) {
     console.error('Cover photo upload error:', error);
     res.status(500).json({ success: false, message: error.message });
