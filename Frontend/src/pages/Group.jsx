@@ -53,15 +53,17 @@ export default function GroupPage() {
     return Math.max(0, Math.floor((Date.now() - startMs) / 1000) - pausedSec);
   };
 
+  const userGroupId = user?.groups?.[0]?._id || user?.groups?.[0];
+
   useEffect(() => {
     if (currentGroup?._id) {
-      if (members.length === 0) fetchMembers(currentGroup._id);
-      return;
+      if (members.length === 0) {
+        fetchMembers(currentGroup._id);
+      }
+    } else if (userGroupId) {
+      loadGroup(userGroupId);
     }
-    if (user?.groups?.length > 0) {
-      loadGroup(user.groups[0]._id || user.groups[0]);
-    }
-  }, [user, currentGroup?._id, members.length]);
+  }, [currentGroup?._id, userGroupId]);
 
   useEffect(() => {
     if (currentGroup?._id && activeTab === 'leaderboard') {
@@ -71,7 +73,6 @@ export default function GroupPage() {
 
   const loadGroup = async (id) => {
     await fetchGroup(id);
-    await fetchMembers(id);
   };
 
   const handleCreate = async (e) => {
