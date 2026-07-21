@@ -471,6 +471,7 @@ textarea.input {
   flex-shrink: 0;
 }
 
+.avatar-xs { width: 28px; height: 28px; font-size: 0.65rem; }
 .avatar-sm { width: 32px; height: 32px; font-size: 0.75rem; }
 .avatar-md { width: 40px; height: 40px; font-size: 0.9rem; }
 .avatar-lg { width: 56px; height: 56px; font-size: 1.1rem; }
@@ -523,6 +524,13 @@ textarea.input {
 }
 
 /* Size classes for status dot based on avatar size */
+.avatar-wrapper.avatar-xs .status-dot {
+  width: 7px;
+  height: 7px;
+  bottom: 0px;
+  right: 0px;
+  border-width: 1.5px;
+}
 .avatar-wrapper.avatar-sm .status-dot {
   width: 8px;
   height: 8px;
