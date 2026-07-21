@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { RiBellFill, RiSearchLine, RiCheckDoubleLine, RiMenuLine } from 'react-icons/ri';
 import useAuthStore from '../../store/authStore';
 import useActivityStore from '../../store/activityStore';
+import useGroupStore from '../../store/groupStore';
 import { usersAPI } from '../../api';
 import Avatar from '../ui/Avatar';
 import dayjs from 'dayjs';
@@ -33,6 +34,45 @@ export default function Navbar({ title, setMobileMenuOpen }) {
     await usersAPI.markNotificationsRead();
     setUnreadCount(0);
     setNotifications(n => n.map(x => ({ ...x, read: true })));
+  };
+
+  const handleNotifClick = async (notif) => {
+    // 1. Mark as read on the backend
+    if (!notif.read) {
+      try {
+        await usersAPI.markSingleNotificationRead(notif._id);
+        setNotifications(prev => prev.map(n => n._id === notif._id ? { ...n, read: true } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      } catch (err) {
+        console.error('Failed to mark notification as read:', err);
+      }
+    }
+
+    // Close notifications panel
+    setShowNotifs(false);
+
+    // 2. Route interaction based on notification properties
+    if (notif.group) {
+      try {
+        await useGroupStore.getState().fetchGroup(notif.group);
+      } catch (err) {
+        console.error('Failed to fetch group details:', err);
+      }
+      
+      if (['new_post', 'new_comment', 'new_like'].includes(notif.type)) {
+        navigate('/feed');
+      } else {
+        navigate('/group');
+      }
+    } else if (notif.link) {
+      navigate(notif.link);
+    } else {
+      if (notif.type === 'achievement') {
+        navigate('/profile');
+      } else {
+        navigate('/dashboard');
+      }
+    }
   };
 
   const formatElapsed = (secs) => {
@@ -154,13 +194,19 @@ export default function Navbar({ title, setMobileMenuOpen }) {
                       No notifications yet
                     </div>
                   ) : notifications.map(n => (
-                    <div key={n._id} style={{
-                      padding: '12px 20px',
-                      borderBottom: '1px solid var(--color-border)',
-                      background: n.read ? 'transparent' : 'rgba(255,107,0,0.04)',
-                      cursor: 'pointer',
-                      transition: 'background 0.15s',
-                    }}>
+                    <div 
+                      key={n._id} 
+                      onClick={() => handleNotifClick(n)}
+                      style={{
+                        padding: '12px 20px',
+                        borderBottom: '1px solid var(--color-border)',
+                        background: n.read ? 'transparent' : 'rgba(255,107,0,0.04)',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = n.read ? 'var(--color-bg-card)' : 'rgba(255,107,0,0.08)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = n.read ? 'transparent' : 'rgba(255,107,0,0.04)'}
+                    >
                       <div style={{ fontWeight: n.read ? 400 : 600, fontSize: '0.875rem', marginBottom: 2 }}>
                         {n.title}
                       </div>

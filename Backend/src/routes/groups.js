@@ -41,7 +41,7 @@ router.get('/:id', protect, async (req, res) => {
       .populate({
         path: 'members',
         select: 'username displayName avatar bio isOnline lastSeen streak currentActivity',
-        populate: { path: 'currentActivity', select: 'name emoji category startTime' },
+        populate: { path: 'currentActivity', select: 'name emoji category startTime isPaused pausedAt totalPausedDuration' },
       });
 
     if (!group) return res.status(404).json({ success: false, message: 'Group not found' });
@@ -117,7 +117,7 @@ router.get('/:id/members', protect, async (req, res) => {
       .select('username displayName avatar bio isOnline lastSeen streak currentActivity xp level')
       .populate({
         path: 'currentActivity',
-        select: 'name emoji category startTime',
+        select: 'name emoji category startTime isPaused pausedAt totalPausedDuration',
       });
 
     // Add server-computed elapsed time for each member's current activity

@@ -91,6 +91,7 @@ export const usersAPI = {
   myStats: () => api.get('/users/me/stats'),
   notifications: () => api.get('/users/me/notifications'),
   markNotificationsRead: () => api.put('/users/me/notifications/read'),
+  markSingleNotificationRead: (id) => api.put(`/users/me/notifications/${id}/read`),
   getProfile: (userId) => api.get(`/users/${userId}/profile`),
 };
 
